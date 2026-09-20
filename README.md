@@ -45,8 +45,8 @@ Copy `.env.example` to `.env.local` and fill it in. Two things that will bite:
 
 - **`DATABASE_URL` is pooled, `DIRECT_URL` is not.** Prisma Migrate fails through Neon's pooler.
   `DIRECT_URL` is the same string without `-pooler`.
-- **Clerk uses the production instance everywhere**, local dev included. Sign-in redirects out to
-  `accounts.vpn.zoiee.me` and back; there is deliberately no second set of test keys.
+- **Clerk has two instances.** Local dev uses the `pk_test_` development instance; the `pk_live_`
+  instance is bound to `clerk.vpn.zoiee.me` and belongs to the deployed app only.
 
 `APP_ENCRYPTION_KEY` is 32 random bytes, base64 — it encrypts every client private key, static
 `.conf` and node agent token. It must never live in Neon (SPEC §9):
