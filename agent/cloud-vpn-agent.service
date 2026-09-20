@@ -1,0 +1,37 @@
+[Unit]
+Description=Cloud VPN node agent
+Documentation=https://github.com/ritik3236/cloud-vpn
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cvpn-agent
+Group=cvpn-agent
+EnvironmentFile=/etc/cloud-vpn-agent/env
+ExecStart=/usr/local/bin/cloud-vpn-agent
+Restart=on-failure
+RestartSec=5
+
+# The agent needs exactly one privilege: managing the WireGuard interface. It runs as an
+# unprivileged user with CAP_NET_ADMIN granted ambiently rather than as root (SPEC §9).
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=true
+
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+# AF_NETLINK is how wgctrl reaches the kernel — without it every peer call fails.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
