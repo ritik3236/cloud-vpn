@@ -1,0 +1,50 @@
+# --- Secrets & VPN material (never commit) ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+# WireGuard configs carry client private keys. Add a negation if a
+# legitimate *.conf (nginx, etc.) is ever needed.
+*.conf
+
+# --- Dependencies ---
+node_modules/
+.pnp
+.pnp.*
+.yarn/install-state.gz
+
+# --- Next.js / build output ---
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# --- Prisma local artifacts ---
+prisma/*.db
+prisma/*.db-journal
+
+# --- Go node agent ---
+agent/agent
+agent/bin/
+*.exe
+*.test
+*.out
+
+# --- Logs ---
+*-debug.log*
+*-error.log*
+
+# --- Testing ---
+coverage/
+
+# --- Tooling / editors ---
+.claude/settings.local.json
+.claude/worktrees/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
