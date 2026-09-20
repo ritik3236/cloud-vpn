@@ -1,6 +1,6 @@
 'use client';
 
-import { MoreHorizontal, Power, PowerOff, Trash2, Undo2, UserPlus } from 'lucide-react';
+import { Download, MoreHorizontal, Power, PowerOff, Trash2, Undo2, UserPlus } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -37,13 +37,16 @@ import {
   SelectValue,
 } from '@/design-system/ui/select';
 
+import { ConfigFileDialog } from './config-file-dialog';
 import {
   assignConfigAction,
   disableConfigAction,
   enableConfigAction,
+  retrieveConfigAction,
   revokeConfigAction,
   unassignConfigAction,
 } from './actions';
+import type { RetrieveResult } from './actions';
 
 export type AssignableUser = { id: string; label: string };
 
@@ -58,15 +61,21 @@ export type ConfigActionRow = {
 export function ConfigRowActions({
   config,
   users,
+  canRetrieve = false,
 }: {
   config: ConfigActionRow;
   users: AssignableUser[];
+  /** Retrieving key material is admin-only (SPEC §2) — ops never sees a private key. */
+  canRetrieve?: boolean;
 }) {
   const [pending, startTransition] = React.useTransition();
   const [confirming, setConfirming] = React.useState(false);
   const [returning, setReturning] = React.useState(false);
   const [assigning, setAssigning] = React.useState(false);
   const [assignee, setAssignee] = React.useState<string>('');
+  const [fileOpen, setFileOpen] = React.useState(false);
+  const [file, setFile] = React.useState<RetrieveResult | null>(null);
+  const [fetching, startFetch] = React.useTransition();
 
   const name = config.assignedIp ?? config.id;
   // Revoking is irreversible but not catastrophic: the fix is issuing a new config, which takes
@@ -93,6 +102,20 @@ export function ConfigRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
+          {canRetrieve && config.status !== 'revoked' ? (
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setFile(null);
+                setFileOpen(true);
+                startFetch(async () => setFile(await retrieveConfigAction(config.id)));
+              }}
+            >
+              <Download className="size-4" />
+              Get config
+            </DropdownMenuItem>
+          ) : null}
+
           {config.status === 'unassigned' ? (
             <DropdownMenuItem
               disabled={pending}
@@ -158,6 +181,14 @@ export function ConfigRowActions({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ConfigFileDialog
+        open={fileOpen}
+        onOpenChange={setFileOpen}
+        label={config.deviceLabel ?? name}
+        result={file}
+        pending={fetching}
+      />
 
       <Dialog open={assigning} onOpenChange={setAssigning}>
         <DialogContent className="sm:max-w-md">

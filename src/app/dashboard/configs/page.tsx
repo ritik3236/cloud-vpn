@@ -68,7 +68,7 @@ export default async function ConfigsPage() {
           action={canGenerate ? <GenerateConfigDialog nodes={nodes} /> : null}
         />
       ) : (
-        <DataTable columns={configColumns(assignable)} rows={configs} rowKey={(config) => config.id} />
+        <DataTable columns={configColumns(assignable, canGenerate)} rows={configs} rowKey={(config) => config.id} />
       )}
     </div>
   );

@@ -116,6 +116,7 @@ const columns = (userLabel: string, canManage: boolean): Column<Row>[] => [
         <div className="flex justify-end">
           <ConfigRowActions
             users={[]}
+            canRetrieve={canManage}
             config={{
               id: row.id,
               status: row.status,

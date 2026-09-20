@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import QRCode from 'qrcode';
 
 import { AppSidebar } from '@/app/dashboard/app-sidebar';
 import { DataTable, EmptyState, PageHeader, StatCard } from '@/design-system';
@@ -8,6 +9,8 @@ import { GenerateConfigDialog } from '@/features/configs/generate-config-dialog'
 import { EnrollNodeDialog } from '@/features/nodes/enroll-node-dialog';
 import { AddUserDialog } from '@/features/users/add-user-dialog';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
+
+import { ConfigDialogDemo } from './config-dialog-demo';
 
 const day = 86_400_000;
 
@@ -49,8 +52,28 @@ const configs: ConfigRow[] = [
  * gated behind a Clerk session, so this is the only way to look at the UI while building it.
  * Development only — it 404s in production so it can never ship.
  */
-export default function PreviewPage() {
+export default async function PreviewPage() {
   if (process.env.NODE_ENV === 'production') notFound();
+
+  const sampleConf = [
+    '[Interface]',
+    'PrivateKey = aGVsbG8gd29ybGQgdGhpcyBpcyAzMiBieXRlcyE=',
+    'Address = 10.8.0.5/32',
+    'DNS = 1.1.1.1',
+    '',
+    '[Peer]',
+    'PublicKey = 9VvXP4QKfb3so09suPMaNr+0HwhDCFWIPz/ydL4m9kU=',
+    'Endpoint = 80.78.31.19:51820',
+    'AllowedIPs = 0.0.0.0/0',
+    'PersistentKeepalive = 25',
+  ].join('\n');
+  const qrSvg = await QRCode.toString(sampleConf, {
+    type: 'svg',
+    margin: 1,
+    width: 240,
+    errorCorrectionLevel: 'M',
+    color: { dark: '#000000', light: '#ffffff' },
+  });
 
   return (
     <SidebarProvider>
@@ -80,14 +103,25 @@ export default function PreviewPage() {
               <PageHeader title="Configs" description="4 configs, 1 live."
                 action={<GenerateConfigDialog nodes={[{ id: 'n1', name: 'VPN-1', region: 'Stockholm' }]} />} />
               <DataTable
-                columns={configColumns([{ id: 'u1', label: 'Asha Menon' }])}
+                columns={configColumns([{ id: 'u1', label: 'Asha Menon' }], true)}
                 rows={configs}
                 rowKey={(c) => c.id}
               />
             </div>
 
             <div className="space-y-5">
-              <PageHeader title="Users" description="People who hold configs." action={<AddUserDialog />} />
+              <PageHeader
+                title="Users"
+                description="People who hold configs."
+                action={
+                  <div className="flex items-center gap-2">
+                    <ConfigDialogDemo
+                      result={{ ok: true, filename: 'vpn-1-phone.conf', content: sampleConf, qrSvg }}
+                    />
+                    <AddUserDialog />
+                  </div>
+                }
+              />
               <EmptyState
                 title="No users yet"
                 hint="Staff add users here — there is no public signup."
