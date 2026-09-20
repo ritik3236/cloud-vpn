@@ -28,7 +28,7 @@ prisma/*.db
 prisma/*.db-journal
 
 # --- Go node agent ---
-agent/agent
+agent/cloud-vpn-agent
 agent/bin/
 *.exe
 *.test
