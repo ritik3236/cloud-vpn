@@ -75,7 +75,7 @@ export default async function UsersPage() {
       {users.length === 0 ? (
         <EmptyState
           title="No users yet"
-          hint="Users are onboarded by staff — there is no public signup. Onboarding is not built yet, so configs cannot be assigned to anyone."
+          hint="Staff add users here — there is no public signup. Configs can be generated without a user, but they stay spare until someone exists to hold them."
         />
       ) : (
         <DataTable columns={columns} rows={users} rowKey={(user) => user.id} />
