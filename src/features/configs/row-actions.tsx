@@ -1,6 +1,6 @@
 'use client';
 
-import { MoreHorizontal, Power, PowerOff, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Power, PowerOff, Trash2, UserPlus } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -20,9 +20,32 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/ui/dialog';
 import { Input } from '@/design-system/ui/input';
+import { Label } from '@/design-system/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/design-system/ui/select';
 
-import { disableConfigAction, enableConfigAction, revokeConfigAction } from './actions';
+import {
+  assignConfigAction,
+  disableConfigAction,
+  enableConfigAction,
+  revokeConfigAction,
+} from './actions';
+
+export type AssignableUser = { id: string; label: string };
 
 export type ConfigActionRow = {
   id: string;
@@ -32,9 +55,17 @@ export type ConfigActionRow = {
   userLabel: string | null;
 };
 
-export function ConfigRowActions({ config }: { config: ConfigActionRow }) {
+export function ConfigRowActions({
+  config,
+  users,
+}: {
+  config: ConfigActionRow;
+  users: AssignableUser[];
+}) {
   const [pending, startTransition] = React.useTransition();
   const [confirming, setConfirming] = React.useState(false);
+  const [assigning, setAssigning] = React.useState(false);
+  const [assignee, setAssignee] = React.useState<string>('');
   const [typed, setTyped] = React.useState('');
 
   const name = config.assignedIp ?? config.id;
@@ -61,6 +92,20 @@ export function ConfigRowActions({ config }: { config: ConfigActionRow }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
+          {config.status === 'unassigned' ? (
+            <DropdownMenuItem
+              disabled={pending}
+              onSelect={(event) => {
+                event.preventDefault();
+                setAssignee('');
+                setAssigning(true);
+              }}
+            >
+              <UserPlus className="size-4" />
+              Assign to…
+            </DropdownMenuItem>
+          ) : null}
+
           {config.status === 'active' ? (
             // Reversible, so it just happens and offers undo — no modal in the way.
             <DropdownMenuItem
@@ -100,6 +145,63 @@ export function ConfigRowActions({ config }: { config: ConfigActionRow }) {
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Dialog open={assigning} onOpenChange={setAssigning}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign {name}</DialogTitle>
+            <DialogDescription>
+              This adds the peer to the node — the tunnel goes live as soon as you assign it.
+            </DialogDescription>
+          </DialogHeader>
+
+          {users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              There is nobody to assign this to yet. Add a user first, then come back.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor={`assignee-${config.id}`} className="text-sm">
+                Assign to
+              </Label>
+              <Select value={assignee} onValueChange={setAssignee}>
+                <SelectTrigger id={`assignee-${config.id}`} className="h-8 w-full bg-background">
+                  <SelectValue placeholder="Choose a person" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" size="sm" className="h-8" onClick={() => setAssigning(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-8"
+              disabled={users.length === 0}
+              onClick={() => {
+                if (!assignee) {
+                  toast.error('Choose who this config is for.');
+                  return;
+                }
+                setAssigning(false);
+                run(() => assignConfigAction(config.id, assignee));
+              }}
+            >
+              <UserPlus className="size-4" />
+              {pending ? 'Assigning…' : 'Assign config'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>

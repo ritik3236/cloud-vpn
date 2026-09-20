@@ -12,14 +12,23 @@ export default async function ConfigsPage() {
   const { role } = await requireRole('admin', 'ops');
   const canGenerate = role === 'admin';
 
-  const [configs, nodes] = await Promise.all([
+  const [configs, nodes, people] = await Promise.all([
     db.config.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: { node: { select: { name: true } }, user: { select: { name: true, email: true } } },
     }),
     db.node.findMany({ where: { status: 'active' }, select: { id: true, name: true, region: true } }),
+    // Only active people can receive a config — suspending someone is meant to stop access,
+    // so it must not be possible to hand them a fresh tunnel.
+    db.user.findMany({
+      where: { status: 'active' },
+      select: { id: true, name: true, email: true },
+      orderBy: [{ name: 'asc' }, { email: 'asc' }],
+    }),
   ]);
+
+  const assignable = people.map((person) => ({ id: person.id, label: person.name ?? person.email }));
 
   const live = configs.filter((config) => config.status === 'active').length;
 
@@ -56,7 +65,7 @@ export default async function ConfigsPage() {
           action={canGenerate ? <GenerateConfigDialog nodes={nodes} /> : null}
         />
       ) : (
-        <DataTable columns={configColumns} rows={configs} rowKey={(config) => config.id} />
+        <DataTable columns={configColumns(assignable)} rows={configs} rowKey={(config) => config.id} />
       )}
     </div>
   );

@@ -7,7 +7,7 @@ import {
 } from '@/design-system';
 import { formatDateTime, relativeTime, truncateId } from '@/lib/format';
 
-import { ConfigRowActions } from './row-actions';
+import { ConfigRowActions, type AssignableUser } from './row-actions';
 
 export type ConfigRow = {
   id: string;
@@ -22,7 +22,8 @@ export type ConfigRow = {
 
 const holderOf = (config: ConfigRow) => config.user?.name ?? config.user?.email ?? null;
 
-export const configColumns: Column<ConfigRow>[] = [
+/** Columns are a function of the assignable users, so the row menu can offer them. */
+export const configColumns = (users: AssignableUser[]): Column<ConfigRow>[] => [
   {
     key: 'holder',
     header: 'Assigned to',
@@ -82,6 +83,7 @@ export const configColumns: Column<ConfigRow>[] = [
     cell: (config) => (
       <div className="flex justify-end">
         <ConfigRowActions
+          users={users}
           config={{
             id: config.id,
             status: config.status,
@@ -94,3 +96,4 @@ export const configColumns: Column<ConfigRow>[] = [
     ),
   },
 ];
+
