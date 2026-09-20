@@ -23,12 +23,15 @@ export function ConfigFileDialog({
   label,
   result,
   pending,
+  note,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   label: string;
   result: RetrieveResult | null;
   pending: boolean;
+  /** The warning differs by audience: an admin is forwarding a key, a user is receiving one. */
+  note?: string;
 }) {
   const download = () => {
     if (!result?.ok) return;
@@ -70,9 +73,8 @@ export function ConfigFileDialog({
             <div className="flex items-start gap-2 rounded-md bg-secret-bg px-3 py-2 text-secret">
               <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
               <p className="text-xs">
-                This contains the private key. Every retrieval is recorded in the audit log, and
-                you can get it again later — so send it over something you trust rather than
-                keeping a copy.
+                {note ??
+                  'This contains the private key. Every retrieval is recorded in the audit log, and you can get it again later — so send it over something you trust rather than keeping a copy.'}
               </p>
             </div>
 
