@@ -1,10 +1,10 @@
-import { UserButton } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 
 import { ForbiddenError, requireRole, UnauthenticatedError } from '@/auth/roles';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/design-system/ui/sidebar';
 import { Toaster } from '@/design-system/ui/sonner';
 
-import { DashboardNav } from './nav';
+import { AppSidebar } from './app-sidebar';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let role: string;
@@ -16,8 +16,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       return (
         <main className="flex flex-1 items-center justify-center p-6">
           <p role="alert" className="max-w-sm text-center text-sm text-muted-foreground">
-            Your account has no staff role yet. An admin needs to grant you one before you can
-            use the control plane.
+            Your account has no staff role yet. An admin needs to grant you one before you can use
+            the control plane.
           </p>
         </main>
       );
@@ -26,19 +26,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-6 border-b border-border px-6">
-        <div className="flex items-center gap-6">
-          <span className="text-sm font-semibold tracking-tight">Cloud VPN</span>
-          <DashboardNav />
+    <SidebarProvider>
+      <AppSidebar role={role} />
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+          <SidebarTrigger className="-ml-1" />
+        </header>
+        <div className="flex-1 p-6">
+          <div className="mx-auto w-full max-w-6xl">{children}</div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground capitalize">{role}</span>
-          <UserButton />
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">{children}</main>
+      </SidebarInset>
       <Toaster position="bottom-right" />
-    </div>
+    </SidebarProvider>
   );
 }
