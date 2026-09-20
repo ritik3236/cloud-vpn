@@ -282,6 +282,11 @@ Adding a node on **any** provider becomes:
 2. Install WireGuard + drop the Go agent (one binary + a systemd unit or container).
 3. Open UDP (wg port) publicly + agent port to the control plane.
 4. In the dashboard: **Add node** → name, region, endpoint, CIDR pool, DNS, agent URL+token.
+   The control plane **probes the agent before saving**: it must answer, authenticate the token,
+   report `wg_up`, and report `ip_forward` and `src_valid_mark` as true. A node that fails is
+   refused rather than registered and discovered broken later. The node's public key is read
+   **from the agent**, never typed — a mistyped key yields configs that look correct and never
+   handshake.
 5. Node is now a selectable "location" admins can issue configs for.
 
 No per-node dashboard, no per-domain login — that friction is gone.
@@ -312,8 +317,14 @@ No per-node dashboard, no per-domain login — that friction is gone.
 
 - **Proton can't be auto-provisioned** — static vault only (§6).
 - **One WireGuard key per device** — same key on two devices flaps; per-device configs (§5).
-- **LXC sysctl trap** — `src_valid_mark` / `ip_forward` may be blocked on container VPS;
-  KVM is safe, LXC needs verifying before use as a node (§9).
+- **LXC sysctl trap — test, don't assume.** `src_valid_mark` / `ip_forward` may be blocked on a
+  container VPS. KVM is always safe; LXC varies *by box*, not by provider: the njal.la webtop
+  container blocked them, while njal.la VPN-1 (also LXC) allows both and hosts WireGuard fine.
+  Onboarding checks this automatically — the agent reports both sysctls and the control plane
+  refuses a node that fails (§10).
+- **Ubuntu 26.04 ships no `iptables`**, so `wg-quick`'s NAT `PostUp` fails with
+  `command not found` and the interface is rolled back. Install the nftables-backed shim
+  (`apt-get install iptables`) when provisioning a node.
 - **Nodes must not run on metered-egress cloud.** Full-tunnel (§5) means a node carries *all*
   of a user's traffic, and AWS/GCP egress at ~$0.09/GB makes that ruinous — one heavy user can
   outcost the server. Nodes want bundled-terabyte VPS. The control plane is the opposite case:
