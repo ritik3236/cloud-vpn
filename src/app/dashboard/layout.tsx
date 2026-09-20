@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { ForbiddenError, requireRole, UnauthenticatedError } from '@/auth/roles';
+import { Button } from '@/design-system/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/design-system/ui/sidebar';
 import { Toaster } from '@/design-system/ui/sonner';
 
@@ -15,10 +17,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
     if (error instanceof ForbiddenError) {
       return (
         <main className="flex flex-1 items-center justify-center p-6">
-          <p role="alert" className="max-w-sm text-center text-sm text-muted-foreground">
-            Your account has no staff role yet. An admin needs to grant you one before you can use
-            the control plane.
-          </p>
+          <div className="max-w-sm space-y-3 text-center">
+            <p role="alert" className="text-sm text-muted-foreground">
+              This account has no staff role, so the control plane is not available to you.
+            </p>
+            <Button asChild size="sm" className="h-8">
+              <Link href="/me">Go to your connections</Link>
+            </Button>
+          </div>
         </main>
       );
     }

@@ -1,9 +1,15 @@
+import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 
+import { currentRole } from '@/auth/roles';
+
 /**
- * There is no marketing surface — this is an internal control plane. Land straight on the
- * dashboard; its layout sends anyone without a session to sign-in.
+ * No marketing surface — this is an internal control plane. Staff land on the dashboard,
+ * everyone else on their own connections.
  */
-export default function Home() {
-  redirect('/dashboard');
+export default async function Home() {
+  const { userId } = await auth();
+  if (!userId) redirect('/sign-in');
+
+  redirect((await currentRole()) ? '/dashboard' : '/me');
 }

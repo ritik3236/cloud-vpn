@@ -16,7 +16,10 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
 - Configs from two kinds of source, behind one "issue config" action:
   - **Managed** self-hosted nodes → generate + provision + revoke automatically.
   - **External** providers (Proton) → store an admin-supplied `.conf` and assign it.
-- Self-service **user dashboard**: a client logs in once, sees their own configs, downloads / QR, nothing else.
+- Self-service **user dashboard** (`/me`): a client logs in once, sees their own configs,
+  downloads / QR, nothing else. Retrieval is scoped to the signed-in identity, and a config
+  belonging to someone else returns the same error as one that does not exist — so ids cannot be
+  probed. Self-retrieval is audited exactly like an admin's, because it is equally a delivery.
 - Role-based staff: **admin** (full), **ops** (read + disable/revoke, no create, no key access).
 - Scale target: **~1000 users**, single organization, onboarded by staff (no public signup).
 
@@ -397,9 +400,15 @@ Decided 2026-09-20:
 - **Key material is admin-only** — ops gets metadata plus the disable/revoke kill switch, never
   a private key (§2).
 
+Decided 2026-09-21:
+- **A user is linked to their Clerk identity by verified email.** Staff add someone by address;
+  the first time that person signs in, the control plane matches their *verified* primary email
+  and records the Clerk id. This only holds because Clerk verifies the address — matching an
+  unverified one would let anyone claim another person's configs at sign-up. A row already
+  claimed by a different Clerk account is never re-pointed.
+
 Still to decide:
 - Control-plane domain (highbytestech.com subdomain? new domain?).
-- How users first receive access — Clerk invite email → set password → dashboard.
 
 ---
 

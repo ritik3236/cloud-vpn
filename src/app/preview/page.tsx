@@ -11,6 +11,8 @@ import { EnrollNodeDialog } from '@/features/nodes/enroll-node-dialog';
 import { AddUserDialog } from '@/features/users/add-user-dialog';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
 
+import { ConfigCard } from '@/features/me/config-card';
+
 import { ConfigDialogDemo } from './config-dialog-demo';
 
 const day = 86_400_000;
@@ -120,6 +122,35 @@ export default async function PreviewPage() {
                 rows={configs}
                 rowKey={(c) => c.id}
               />
+            </div>
+
+            <div className="space-y-5">
+              <PageHeader
+                title="Your connections"
+                description="What a user sees — their own configs and nothing else."
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ConfigCard
+                  config={{
+                    id: 'm1', status: 'active', deviceLabel: 'Phone', assignedIp: '10.8.0.5',
+                    sourceType: 'managed', node: { name: 'VPN-1', region: 'Stockholm' },
+                    externalSource: null,
+                  }}
+                />
+                <ConfigCard
+                  config={{
+                    id: 'm2', status: 'active', deviceLabel: 'Work laptop', assignedIp: '10.2.0.2',
+                    sourceType: 'static', node: null, externalSource: { name: 'Proton' },
+                  }}
+                />
+                <ConfigCard
+                  config={{
+                    id: 'm3', status: 'disabled', deviceLabel: 'Old tablet', assignedIp: '10.8.0.9',
+                    sourceType: 'managed', node: { name: 'VPN-1', region: 'Stockholm' },
+                    externalSource: null,
+                  }}
+                />
+              </div>
             </div>
 
             <div className="space-y-5">
