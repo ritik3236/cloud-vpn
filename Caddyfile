@@ -1,0 +1,7 @@
+# Caddy terminates TLS with a real Let's Encrypt certificate. This is the ONE public hostname
+# in the system — node certificates stay self-signed and pinned, so the node inventory never
+# reaches Certificate Transparency logs (SPEC §7).
+{$APP_DOMAIN:vpn.zoiee.me} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
