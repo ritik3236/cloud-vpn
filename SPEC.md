@@ -204,7 +204,16 @@ A minimal authenticated HTTP(S) service on each node. The control plane is the o
   it travels **base64url** (unpadded) — percent-encoding would make correctness depend on how the
   agent's router handles `%2F`. In JSON bodies it is plain base64. The agent accepts either.
 - **Auth:** bearer token per node (stored in the DB, per node), required on **every** endpoint
-  including `/health`, which would otherwise leak the node's public key. mTLS optional later.
+  including `/health`, which would otherwise leak the node's public key.
+- **TLS by pinned self-signed certificate.** Each node generates a long-lived self-signed cert
+  with its own IP in the SAN; the PEM is copied off the node during provisioning and stored in
+  `nodes.agent_cert`, and the control plane trusts *only* that certificate. Deliberately **not**
+  a public CA: a Let's Encrypt cert per node would publish the entire node inventory to
+  Certificate Transparency logs — a permanent, public leak for a privacy VPN — and would add a
+  DNS record and a renewal story to every node. Pinning needs none of those. Carrying the PEM
+  out of band (over the SSH session that installs the agent) also removes any
+  trust-on-first-use window. mTLS, which additionally authenticates the control plane to the
+  node, is the natural next step from here.
 - **Implementation:** the agent talks to the kernel over **netlink** (`wgctrl`), never by shelling
   out to `wg` — there is no code path that can be command-injected, and handshake/transfer
   counters come back directly.

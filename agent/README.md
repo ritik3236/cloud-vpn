@@ -38,6 +38,21 @@ Environment only; no config file.
 | `TLS_CERT_FILE` | — | serve HTTPS directly; omit to run behind a TLS-terminating proxy |
 | `TLS_KEY_FILE` | — | must be set together with the cert |
 
+### TLS
+
+The agent uses a **self-signed certificate that the control plane pins** — no public CA, so
+nothing about the node fleet is published to Certificate Transparency logs, and there is no DNS
+record or renewal per node. Generate it with the node's own IP in the SAN:
+
+```bash
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+  -days 3650 -keyout agent.key -out agent.crt \
+  -subj "/CN=cloud-vpn-agent" -addext "subjectAltName=IP:<node-ip>"
+```
+
+Then paste `agent.crt` into the Add Node form. Copying it over the same SSH session that installs
+the agent is what removes the trust-on-first-use window.
+
 ## Install
 
 ```bash

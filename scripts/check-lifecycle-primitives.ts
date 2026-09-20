@@ -54,6 +54,7 @@ async function main() {
         name: `probe-${Date.now()}`, region: 'sg', provider: 'test', endpoint: '1.2.3.4:51820',
         nodePubkey: 'pk', cidrPool: '10.8.0.0/24', dns: '1.1.1.1',
         agentUrl: 'https://agent.invalid', agentToken: 'enc',
+        agentCert: '-----BEGIN CERTIFICATE-----probe-----END CERTIFICATE-----',
       },
     });
     const staff = await tx.staff.create({ data: { clerkId: `probe-${Date.now()}`, role: 'admin' } });

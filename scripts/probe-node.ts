@@ -4,13 +4,17 @@
  *
  *   AGENT_URL=http://localhost:51821 AGENT_TOKEN=... pnpm probe:node
  */
+import { readFileSync } from 'node:fs';
+
 import { api, AgentError, type AgentTarget } from '../src/api';
 import { generateKeypair } from '../src/server/wireguard';
 
+const certPath = process.env.AGENT_CERT_FILE;
 const target: AgentTarget = {
   nodeId: 'probe',
   baseUrl: process.env.AGENT_URL ?? 'http://localhost:51821',
   token: process.env.AGENT_TOKEN ?? '',
+  cert: certPath ? readFileSync(certPath, 'utf8') : undefined,
 };
 
 let failures = 0;
@@ -45,6 +49,17 @@ async function main() {
     check('bad token is rejected', false, 'call unexpectedly succeeded');
   } catch (err) {
     check('bad token is rejected', err instanceof AgentError && err.code === 'unauthorized');
+  }
+
+  // Pinning only means something if the UNPINNED case fails. Without the cert the connection
+  // must not be trusted, even though the token is correct.
+  if (target.cert && target.baseUrl.startsWith('https:')) {
+    try {
+      await api.agent.health({ ...target, cert: undefined }, {});
+      check('unpinned connection is refused', false, 'connected without the pinned cert');
+    } catch (err) {
+      check('unpinned connection is refused', err instanceof AgentError && err.code === 'unreachable');
+    }
   }
 
   console.log(failures ? `\n${failures} FAILED` : '\ncontrol plane <-> agent contract holds');
