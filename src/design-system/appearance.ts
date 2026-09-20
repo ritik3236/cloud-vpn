@@ -25,22 +25,7 @@ export const APPEARANCES: Appearance[] = [
 ];
 
 export const DEFAULT_APPEARANCE = 'slate-light';
-export const DARK_FALLBACK = 'slate-dark';
-export const APPEARANCE_STORAGE_KEY = 'cvpn-appearance';
+export const APPEARANCE_COOKIE = 'cvpn-appearance';
 
-/**
- * Runs before first paint, inlined in <head>. Applying a theme from an effect instead paints
- * the default palette and then flashes to the user's on every hard load.
- */
-export const APPEARANCE_SCRIPT = `
-try {
-  var stored = localStorage.getItem('${APPEARANCE_STORAGE_KEY}');
-  var valid = ${JSON.stringify(APPEARANCES.map((a) => a.id))};
-  if (!stored || stored === 'system' || valid.indexOf(stored) === -1) {
-    stored = matchMedia('(prefers-color-scheme: dark)').matches ? '${DARK_FALLBACK}' : '${DEFAULT_APPEARANCE}';
-  }
-  document.documentElement.dataset.appearance = stored;
-} catch (e) {
-  document.documentElement.dataset.appearance = '${DEFAULT_APPEARANCE}';
-}
-`.trim();
+export const isAppearance = (value: string | undefined): boolean =>
+  !!value && APPEARANCES.some((appearance) => appearance.id === value);

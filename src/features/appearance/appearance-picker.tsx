@@ -4,7 +4,7 @@ import { Check, Palette } from 'lucide-react';
 import * as React from 'react';
 
 import {
-  APPEARANCE_STORAGE_KEY,
+  APPEARANCE_COOKIE,
   APPEARANCES,
   DEFAULT_APPEARANCE,
   type AppearanceMode,
@@ -32,12 +32,10 @@ const readAppearance = () => document.documentElement.dataset.appearance ?? DEFA
 const serverAppearance = () => DEFAULT_APPEARANCE;
 
 function applyAppearance(id: string) {
+  // Applied immediately for instant feedback, and stored in a cookie so the SERVER renders it
+  // on the next load — which is what makes the pre-paint script unnecessary.
   document.documentElement.setAttribute('data-appearance', id);
-  try {
-    localStorage.setItem(APPEARANCE_STORAGE_KEY, id);
-  } catch {
-    // Private browsing: the palette still applies for this session.
-  }
+  document.cookie = `${APPEARANCE_COOKIE}=${id}; path=/; max-age=31536000; samesite=lax`;
   listeners.forEach((listener) => listener());
 }
 

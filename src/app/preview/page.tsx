@@ -6,6 +6,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/design-system/u
 import { configColumns, type ConfigRow } from '@/features/configs/columns';
 import { GenerateConfigDialog } from '@/features/configs/generate-config-dialog';
 import { AddNodeDialog } from '@/features/nodes/add-node-dialog';
+import { AddUserDialog } from '@/features/users/add-user-dialog';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
 
 const day = 86_400_000;
@@ -78,14 +79,19 @@ export default function PreviewPage() {
             <div className="space-y-5">
               <PageHeader title="Configs" description="4 configs, 1 live."
                 action={<GenerateConfigDialog nodes={[{ id: 'n1', name: 'VPN-1', region: 'Singapore' }]} />} />
-              <DataTable columns={configColumns} rows={configs} rowKey={(c) => c.id} />
+              <DataTable
+                columns={configColumns([{ id: 'u1', label: 'Asha Menon' }])}
+                rows={configs}
+                rowKey={(c) => c.id}
+              />
             </div>
 
             <div className="space-y-5">
-              <PageHeader title="Users" description="People who hold configs." />
+              <PageHeader title="Users" description="People who hold configs." action={<AddUserDialog />} />
               <EmptyState
                 title="No users yet"
-                hint="Users are onboarded by staff — there is no public signup."
+                hint="Staff add users here — there is no public signup."
+                action={<AddUserDialog />}
               />
             </div>
           </div>

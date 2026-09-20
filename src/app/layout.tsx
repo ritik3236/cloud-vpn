@@ -1,8 +1,9 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 
-import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE } from "@/design-system/appearance";
+import { APPEARANCE_COOKIE, isAppearance } from "@/design-system/appearance";
 
 import "./globals.css";
 
@@ -14,20 +15,21 @@ export const metadata: Metadata = {
   description: "Control plane for the WireGuard node fleet",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // The chosen palette lives in a cookie, so the server renders it onto <html> directly. That
+  // removes the pre-paint inline script entirely: no flash, and no script tag inside the React
+  // tree for React 19 to warn about. With no cookie the attribute is absent and CSS follows the
+  // system preference.
+  const stored = (await cookies()).get(APPEARANCE_COOKIE)?.value;
+  const appearance = isAppearance(stored) ? stored : undefined;
+
   return (
     <ClerkProvider>
       <html
         lang="en"
-        // A palette is present in the server HTML so the page is themed even before the script
-        // runs; the script then corrects it to the stored choice, still before first paint.
-        data-appearance={DEFAULT_APPEARANCE}
+        data-appearance={appearance}
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-        suppressHydrationWarning
       >
-        <head>
-          <script dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
-        </head>
         <body className="min-h-full flex flex-col">{children}</body>
       </html>
     </ClerkProvider>
