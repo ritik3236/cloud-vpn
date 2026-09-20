@@ -3,15 +3,11 @@ import { auth } from '@clerk/nextjs/server';
 export const ROLES = ['admin', 'ops'] as const;
 export type Role = (typeof ROLES)[number];
 
-/**
- * SPEC §2 — roles live in Clerk and are checked server-side on every call.
- * Requires the session token to carry a `metadata` claim holding `roles`.
- */
-export async function currentRole(): Promise<Role | null> {
-  const { sessionClaims } = await auth();
-  const metadata = sessionClaims?.metadata as { roles?: unknown } | undefined;
-  const roles = Array.isArray(metadata?.roles) ? metadata.roles : [];
-  return ROLES.find((r) => roles.includes(r)) ?? null;
+export class UnauthenticatedError extends Error {
+  constructor() {
+    super('not signed in');
+    this.name = 'UnauthenticatedError';
+  }
 }
 
 export class ForbiddenError extends Error {
@@ -21,10 +17,31 @@ export class ForbiddenError extends Error {
   }
 }
 
-export async function requireRole(...allowed: Role[]): Promise<Role> {
-  const role = await currentRole();
+function roleFrom(sessionClaims: unknown): Role | null {
+  const metadata = (sessionClaims as { metadata?: { roles?: unknown } } | null)?.metadata;
+  const roles = Array.isArray(metadata?.roles) ? metadata.roles : [];
+  return ROLES.find((r) => roles.includes(r)) ?? null;
+}
+
+export async function currentRole(): Promise<Role | null> {
+  const { sessionClaims } = await auth();
+  return roleFrom(sessionClaims);
+}
+
+/**
+ * The authorization gate (SPEC §2). Call this in every page, route handler and server function
+ * that reads or mutates protected data — never rely on the proxy to have done it.
+ *
+ * Distinguishes 401 from 403 so a missing session does not read as a permissions bug.
+ */
+export async function requireRole(...allowed: Role[]): Promise<{ userId: string; role: Role }> {
+  const { userId, sessionClaims } = await auth();
+  if (!userId) throw new UnauthenticatedError();
+
+  const role = roleFrom(sessionClaims);
   if (!role || !allowed.includes(role)) throw new ForbiddenError(allowed);
-  return role;
+
+  return { userId, role };
 }
 
 /** Retrieving key material is a create-level power — admin only (SPEC §2). */

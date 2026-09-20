@@ -38,6 +38,10 @@ ESLint `no-restricted-imports` enforces this; do not weaken a fence to make an i
 - **Every agent call is a `defineAgentEndpoint`** in `api/` with zod **request + response**. Never
   `fetch` an agent from a feature. Response validation is load-bearing: an agent that drifts must
   fail loudly, because a silently-wrong revoke is a security bug.
+- **Authorization is resource-based, never path-based.** `proxy.ts` only hydrates the session;
+  every page, route handler and server function that touches protected data calls
+  `requireRole()` itself. Clerk deprecated `createRouteMatcher` precisely because path matching
+  can diverge from Next's routing and leave resources reachable.
 - **Key material is admin-only** (§2). Never return `encrypted_privkey`, `encrypted_conf` or
   `agent_token` to a non-admin, never log plaintext key material, and write an `audit_log` row for
   every retrieval.

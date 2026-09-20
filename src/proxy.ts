@@ -1,11 +1,14 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
-// Next 16 renamed `middleware` to `proxy`; the runtime is nodejs and is not configurable.
-const isPublic = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/api/health']);
-
-export const proxy = clerkMiddleware(async (auth, req) => {
-  if (!isPublic(req)) await auth.protect();
-});
+/**
+ * Session hydration only — deliberately no path-based protection.
+ *
+ * Clerk deprecated `createRouteMatcher` because middleware path matching can diverge from
+ * how Next actually routes a request, leaving protected resources reachable. SPEC §2 requires
+ * the check to run on every call, so authorization is resource-based: each page, route handler
+ * and server function that touches protected data calls `requireRole()` itself.
+ */
+export const proxy = clerkMiddleware();
 
 export const config = {
   matcher: ['/((?!_next|[^?]*\\.(?:ico|png|svg|jpg|jpeg|gif|webp|css|js)).*)', '/(api|trpc)(.*)'],
