@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = {
   nodeDelete: 'node.delete',
   userCreate: 'user.create',
   userSuspend: 'user.suspend',
+  userReactivate: 'user.reactivate',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
