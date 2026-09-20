@@ -83,12 +83,6 @@ export async function probeNodeAgent(
   }
 }
 
-/** Dry run for the Add Node form — same checks as `createNode`, without writing anything. */
-export async function probeNode(input: { agentUrl: string; agentToken: string; agentCert: string }) {
-  await actingStaff('admin');
-  return probeNodeAgent(input.agentUrl, input.agentToken, input.agentCert);
-}
-
 /**
  * Soft removal — the row survives so revoked configs keep their foreign key and the audit trail
  * stays readable (SPEC §9). A node holding live configs is refused rather than silently

@@ -2,9 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 
-import QRCode from 'qrcode';
-
 import { errorMessage } from '@/features/error-message';
+import { configQrSvg } from '@/server/qr';
 import type { ActionResult } from '@/features/nodes/actions';
 import { db } from '@/server/db';
 import { uploadExternalConfig } from '@/server/external';
@@ -124,16 +123,7 @@ export async function retrieveConfigAction(configId: string): Promise<RetrieveRe
       .replace(/[^A-Za-z0-9._-]/g, '-')
       .toLowerCase();
 
-    // Fixed black on white, never theme tokens: a QR needs real contrast to scan, and one
-    // rendered in a palette's muted foreground can fail on a phone camera.
-    const qrSvg = await QRCode.toString(content, {
-      type: 'svg',
-      margin: 1,
-      // Without an explicit width the SVG carries only a viewBox and renders at zero size.
-      width: 240,
-      errorCorrectionLevel: 'M',
-      color: { dark: '#000000', light: '#ffffff' },
-    });
+    const qrSvg = await configQrSvg(content);
 
     return { ok: true, filename: `${slug || 'wireguard'}.conf`, content, qrSvg };
   } catch (error) {

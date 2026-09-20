@@ -18,7 +18,10 @@ export default async function NodesPage() {
 
   const nodes = await db.node.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { configs: true } } },
+    include: {
+      _count: { select: { configs: true } },
+      configs: { where: { status: { in: ['unassigned', 'active', 'disabled'] } }, select: { id: true } },
+    },
   });
 
   const canAdd = role === 'admin';
@@ -46,7 +49,9 @@ export default async function NodesPage() {
           action={canAdd ? <EnrollNodeDialog serverUrl={serverUrl} /> : null}
         />
       ) : (
-        <DataTable columns={nodeColumns} rows={nodes} rowKey={(node) => node.id} />
+        <DataTable
+          columns={nodeColumns(canAdd)}
+          rows={nodes.map((node) => ({ ...node, liveConfigs: node.configs.length }))} rowKey={(node) => node.id} />
       )}
     </div>
   );

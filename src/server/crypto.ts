@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 import { env } from '@/lib/env';
 
@@ -25,11 +25,4 @@ export function decrypt(payload: string): string {
   const decipher = createDecipheriv('aes-256-gcm', KEY, iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
-}
-
-/** Constant-time compare for agent tokens and other bearer secrets. */
-export function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ab.length === bb.length && timingSafeEqual(ab, bb);
 }

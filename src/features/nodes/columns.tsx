@@ -1,6 +1,8 @@
 import { Copyable, NODE_STATUS_LABEL, nodeTone, StatusPill, type Column } from '@/design-system';
 import { formatDateTime, formatNumber, relativeTime, truncateId } from '@/lib/format';
 
+import { NodeRowActions } from './row-actions';
+
 export type NodeRow = {
   id: string;
   name: string;
@@ -12,9 +14,10 @@ export type NodeRow = {
   nodePubkey: string;
   createdAt: Date;
   _count: { configs: number };
+  liveConfigs: number;
 };
 
-export const nodeColumns: Column<NodeRow>[] = [
+export const nodeColumns = (canManage = false): Column<NodeRow>[] => [
   {
     key: 'name',
     header: 'Node',
@@ -67,5 +70,23 @@ export const nodeColumns: Column<NodeRow>[] = [
         {relativeTime(node.createdAt)}
       </span>
     ),
+  },
+  {
+    key: 'actions',
+    header: '',
+    headClassName: 'w-10',
+    cell: (node) =>
+      canManage ? (
+        <div className="flex justify-end">
+          <NodeRowActions
+            node={{
+              id: node.id,
+              name: node.name,
+              status: node.status,
+              liveConfigs: node.liveConfigs,
+            }}
+          />
+        </div>
+      ) : null,
   },
 ];

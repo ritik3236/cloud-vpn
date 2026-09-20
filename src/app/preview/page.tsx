@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
-import QRCode from 'qrcode';
 
+import { configQrSvg } from '@/server/qr';
 import { AppSidebar } from '@/app/dashboard/app-sidebar';
 import { DataTable, EmptyState, PageHeader, StatCard } from '@/design-system';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/design-system/ui/sidebar';
@@ -22,13 +22,13 @@ const nodes: NodeRow[] = [
     id: 'n1', name: 'VPN-1', region: 'Stockholm', provider: 'njal.la', status: 'active',
     endpoint: '80.78.31.19:51820', cidrPool: '10.8.0.0/24',
     nodePubkey: '9VvXP4QKfb3so09suPMaNr+0HwhDCFWIPz/ydL4m9kU=',
-    createdAt: new Date(Date.now() - 2 * day), _count: { configs: 12 },
+    createdAt: new Date(Date.now() - 2 * day), _count: { configs: 12 }, liveConfigs: 3,
   },
   {
     id: 'n2', name: 'VPN-2', region: 'Frankfurt', provider: 'Hetzner', status: 'degraded',
     endpoint: '95.216.44.7:51820', cidrPool: '10.8.1.0/24',
     nodePubkey: 'Qk3mZpLx8fT2vN6cR1aYwE9sD4hJ7bU0iO5gK2lXnPs=',
-    createdAt: new Date(Date.now() - 40 * day), _count: { configs: 1204 },
+    createdAt: new Date(Date.now() - 40 * day), _count: { configs: 1204 }, liveConfigs: 0,
   },
 ];
 
@@ -77,13 +77,7 @@ export default async function PreviewPage() {
     'AllowedIPs = 0.0.0.0/0',
     'PersistentKeepalive = 25',
   ].join('\n');
-  const qrSvg = await QRCode.toString(sampleConf, {
-    type: 'svg',
-    margin: 1,
-    width: 240,
-    errorCorrectionLevel: 'M',
-    color: { dark: '#000000', light: '#ffffff' },
-  });
+  const qrSvg = await configQrSvg(sampleConf);
 
   return (
     <SidebarProvider>
@@ -106,7 +100,7 @@ export default async function PreviewPage() {
 
             <div className="space-y-5">
               <PageHeader title="Nodes" description="2 nodes issuing configs." action={<EnrollNodeDialog serverUrl="https://vpn.zoiee.me" />} />
-              <DataTable columns={nodeColumns} rows={nodes} rowKey={(n) => n.id} />
+              <DataTable columns={nodeColumns(true)} rows={nodes} rowKey={(n) => n.id} />
             </div>
 
             <div className="space-y-5">
