@@ -17,7 +17,7 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
   - **Managed** self-hosted nodes → generate + provision + revoke automatically.
   - **External** providers (Proton) → store an admin-supplied `.conf` and assign it.
 - Self-service **user dashboard**: a client logs in once, sees their own configs, downloads / QR, nothing else.
-- Role-based staff: **admin** (full), **ops** (read + block, no create).
+- Role-based staff: **admin** (full), **ops** (read + disable/revoke, no create, no key access).
 - Scale target: **~1000 users**, single organization, onboarded by staff (no public signup).
 
 **Non-goals (for now)**
@@ -32,9 +32,13 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
 
 | Capability | admin | ops | user |
 |---|---|---|---|
-| View all users / configs / nodes | ✅ | ✅ | own only |
-| Generate & assign a config | ✅ | ❌ | ❌ |
-| Block / revoke a config | ✅ | ✅ | ❌ |
+| View config **metadata** (all users / configs / nodes) | ✅ | ✅ | own only |
+| **Retrieve any user's key / `.conf`** | ✅ | ❌ | ❌ |
+| Generate a config (unassigned spare) | ✅ | ❌ | ❌ |
+| Assign / unassign a config | ✅ | ❌ | ❌ |
+| Disable / re-enable a config (kill switch) | ✅ | ✅ | ❌ |
+| Revoke a config permanently | ✅ | ✅ | ❌ |
+| Reassign a config to another user | ✅ | ❌ | ❌ |
 | Onboard / remove users | ✅ | ❌ | ❌ |
 | Upload external (Proton) configs | ✅ | ❌ | ❌ |
 | Add / remove nodes | ✅ | ❌ | ❌ |
@@ -42,7 +46,9 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
 | Manage staff accounts | ✅ | ❌ | ❌ |
 
 - **admin** (currently 2 people) = everything.
-- **ops** = monitor + emergency kill switch; cannot create anything.
+- **ops** = monitor + emergency kill switch (disable / revoke); cannot create anything, and
+  **cannot retrieve key material** — holding a client's private key is equivalent to holding
+  the tunnel, which is a create-level power.
 - **user** = own dashboard only.
 - A separate **superadmin** tier is optional; with 2 admins it's not needed at launch (Open Q).
 
@@ -96,17 +102,56 @@ Rationale: self-hosted control plane matches the org's privacy posture and holds
 
 ## 5. WireGuard provisioning model (managed nodes)
 
-WireGuard's design is what makes central control clean: **the server never needs the
-client's private key.** Issuing a managed config:
+WireGuard's design is what makes central control clean: **a node only ever needs the client's
+public key**, so peers are added centrally without ever touching the client device. (Our control
+plane does hold the private key — by choice, for admin retrievability (§9), not because the
+protocol requires it.) Issuing a managed config is **two independent steps** — an admin can
+mint spares on a node now and hand them out later (decided 2026-09-20, §13).
 
+**Generate** — no user, no node call:
 1. Control plane generates a client keypair (Curve25519 — pure crypto, no node call).
-2. Allocates a free IP from that node's pool (IPAM, §8).
-3. Calls the node agent: `add-peer(pubkey, allowed_ip)`.
-4. Builds the client `.conf`: client private key + node public key + node endpoint + DNS + `AllowedIPs`.
-5. Stores the config **record** (user, node, pubkey, IP, status, issued_by). The private
-   key is shown to the user **once** (or generated client-side; see Open Q), not stored in plaintext long-term.
+2. Reserves a free IP from that node's pool (IPAM, §8).
+3. Stores the config **record** (node, pubkey, IP, `unassigned`, issued_by) plus the client
+   private key **encrypted at rest** (§13). Keys are generated server-side and stay
+   **retrievable by an admin at any time** — the `.conf` is rebuilt on demand from
+   `encrypted_privkey` + the node's pubkey / endpoint / DNS, so only one secret per config is
+   stored, never a file blob.
 
-**Revoke** = agent `remove-peer(pubkey)` + mark the record `blocked`. Instant, per-config.
+**Assign** — to a user; this is what makes it live:
+4. Calls the node agent: `add-peer(pubkey, allowed_ip)`.
+5. Sets `user_id` + `status = active`. It appears in that user's dashboard, and the `.conf`
+   (client private key + node pubkey + endpoint + DNS + `AllowedIPs`) starts working.
+
+An `unassigned` config creates **zero node state** — nothing is connectable until it is
+assigned, so every live tunnel maps to a named user in the audit log. The trade-off: assignment
+needs the node agent reachable, so if a node is down assignment fails loudly rather than
+quietly handing out a dead config.
+
+**Config lifecycle** (managed). All are instant and per-config:
+
+| Operation | Node (`wg`) | Record | IP | User's existing `.conf` |
+|---|---|---|---|---|
+| **Generate** (spare, no user) | *nothing* | `unassigned` | reserved | n/a — not live yet |
+| **Assign** to a user | `add-peer` | `active` | unchanged | starts working |
+| **Unassign** (never-delivered spare) | `remove-peer` | back to `unassigned` | unchanged | — |
+| **Disable** (reversible kill switch) | `remove-peer` | `disabled` | held, still reserved | stops working |
+| **Re-enable** | `add-peer` (same pubkey + IP) | `active` | unchanged | **works again, unchanged** |
+| **Revoke** (terminal) | `remove-peer` | `revoked` | released to pool | dead |
+| **Reassign** to another user | remove old peer, add new | old `revoked` + `replaced_by_id` → new | old released, new allocated | dead; new user gets a new file |
+
+- **Unassign returns a config to the pool only if it was never delivered.** Once the `.conf`
+  has left the building the holder keeps a copy, so re-handing that same config to someone
+  else is the hole described under Reassign — revoke it and generate a fresh spare instead.
+- Disable is *exactly* reversible: a WireGuard config is only key + endpoint, so re-adding the
+  same pubkey and IP makes the user's original file resume working — no re-download needed.
+- **Reassign issues a fresh keypair; it never transfers the old one.** The previous holder
+  still has the `.conf` on disk, and two devices sharing one key flap the handshake (§12), so
+  a DB-level hand-over would leave a working tunnel behind. One button in the UI, revoke +
+  re-issue underneath, linked by `replaced_by_id` for the audit trail.
+- No separate **rotate-key** action: re-keying for the same user is revoke + issue, so the
+  capability exists without its own button.
+- Records are **soft-deleted only** — a revoked config keeps its row (pubkey, timestamps,
+  `issued_by`) because §9 requires the audit trail to outlive the config.
 
 **Default tunnel mode:** full-tunnel exit (`AllowedIPs = 0.0.0.0/0`) — matches all current
 usage (Proton-style exit VPN). Split/resource-access is a per-config option later (Open Q).
@@ -124,8 +169,14 @@ revoke a user's Proton tunnel. So in this platform:
 
 - Admin **pastes / uploads** a Proton `.conf` into the vault (stored encrypted).
 - Admin **assigns** it to a user; it appears in the user's dashboard like any other config.
+- The two steps are independent, same as managed (§5): an uploaded `.conf` can sit
+  `unassigned` in the vault until someone needs one.
 - "Revoke" for a static config = un-assign / hide it (the tunnel still exists on Proton's
   side until the admin removes the device in Proton's own account — out of our control).
+- **Lifecycle differs from managed** (§5): there is no peer to remove, so *disable* and
+  *revoke* both reduce to un-assign/hide, and *reassign* just re-points the same stored file.
+  The UI must not offer managed-style guarantees here — the tunnel keeps working until an
+  admin deletes the device inside Proton.
 
 Same "issue config" UX as managed; different engine. This is the one capability that is
 storage-only, by nature of the provider.
@@ -158,16 +209,29 @@ A minimal authenticated HTTP(S) service on each node. The control plane is the o
 - **nodes** — id, name, region, provider, endpoint(host:port), node_pubkey, cidr_pool, dns,
   agent_url, agent_token(encrypted), status, driver=`managed`
 - **external_sources** — id, name(e.g. "Proton"), driver=`static`
-- **ip_allocations** — node_id, ip, config_id  *(IPAM: which IPs are taken per node)*
-- **configs** — id, user_id, device_label, source_type(`managed`|`static`), node_id?,
-  pubkey?, assigned_ip?, encrypted_conf?(static), allowed_ips, status(active|blocked),
-  issued_by, created_at, revoked_at
+- **ip_allocations** — node_id, ip, config_id, released_at?  *(IPAM: which IPs are taken per
+  node. A `disabled` config keeps its row so re-enable restores the same IP; a `revoked` one
+  sets `released_at` and returns the IP to the pool.)*
+- **configs** — id, user_id?, device_label, source_type(`managed`|`static`), node_id?,
+  pubkey?, encrypted_privkey?(managed), assigned_ip?, encrypted_conf?(static), allowed_ips,
+  status(`unassigned`|`active`|`disabled`|`revoked`), replaced_by_id?, issued_by, created_at,
+  assigned_at?, disabled_at?, revoked_at?
 - **audit_log** — id, actor(staff/clerk_id), action, target, timestamp, detail
+  *(actions include `config.generate`, `config.assign`, `config.unassign`, `config.view`,
+  `config.disable`, `config.enable`, `config.revoke`, `config.reassign`)*
 
 Notes:
-- managed config → `pubkey`+`assigned_ip`+`node_id`; static config → `encrypted_conf`.
+- managed config → `pubkey`+`encrypted_privkey`+`assigned_ip`+`node_id`; static config →
+  `encrypted_conf`.
 - a user has **many** configs (per device, per node).
 - IPAM lives in `ip_allocations` so the control plane never double-assigns an IP.
+- `user_id` is **null while `unassigned`** — a generated spare has no owner until assigned (§5).
+- An unassigned spare **still holds its IP**, so idle spares eat into the node's CIDR. A `/24`
+  gives 254 usable addresses per node; size pools with the spare pool in mind (`/22` if spares
+  are kept in bulk). Re-IPing a live node later is painful.
+- `replaced_by_id` chains a reassigned config to the fresh one issued in its place, so a
+  `revoked` row with a non-null `replaced_by_id` reads as a hand-over rather than a plain
+  revoke — no extra status value needed.
 
 ---
 
@@ -177,11 +241,19 @@ The control plane becomes the **highest-value target** — if breached, every no
 and the client list are exposed; if down, no new configs issue.
 
 - Staff access: Clerk + **MFA required**; RBAC enforced server-side on every route.
-- Secrets at rest (Neon): encrypt `agent_token`, `encrypted_conf`, and any stored private
-  keys with an app-held key (not just DB-level). Generated client keys shown **once**.
+- Secrets at rest (Neon): encrypt `agent_token`, `encrypted_conf`, and `encrypted_privkey`
+  with an **app-held key kept outside Neon** (droplet env / secret store), so a database-only
+  leak yields ciphertext rather than live tunnels.
+- Client keys are generated server-side and **retained** so an admin can rebuild any `.conf`
+  on demand (§13). That convenience has a price, stated plainly: the control plane holds every
+  client private key, so a compromise of *both* the DB and the app key exposes every tunnel.
+  Mitigations — admin-only retrieval (ops never sees key material, §2), every retrieval
+  written to `audit_log`, and rate-limiting on the retrieval endpoint.
+- Unassigned spares are **inert**: no peer exists on any node until assignment (§5), so a
+  leaked spare file cannot connect and there is no such thing as an ownerless live tunnel.
 - Node agents: per-node bearer token (rotate-able); agent bound to control-plane origin;
   peer-management-only surface.
-- Full **audit log** — who issued / blocked / logged in, when.
+- Full **audit log** — who issued / retrieved / disabled / revoked / reassigned / logged in, when.
 - Backups: Neon PITR for data; each node's `wg` state is reproducible from the DB (the DB is
   the source of truth for peers, so a rebuilt node re-provisions from records).
 - Node prerequisite (learned constraint): kernel WireGuard + `NET_ADMIN` + `ip_forward` +
@@ -208,7 +280,9 @@ No per-node dashboard, no per-domain login — that friction is gone.
 **Phase 1 — MVP (managed only)** — the friction-killer:
 - Clerk auth + RBAC (admin/ops/user), Neon schema (Prisma)
 - Node registry + the Go agent (`add`/`remove`/`list`/`health`)
-- Issue / assign / revoke a self-hosted config (full IPAM)
+- Generate / assign / disable / re-enable / revoke / reassign a self-hosted config (full IPAM)
+- Node-first issue flow: pick a node → generate spares → assign now or later
+- Admin retrieval of any config (rebuild `.conf` from `encrypted_privkey`, audit-logged)
 - User dashboard: list own configs, download + QR
 - Audit log
 
@@ -241,9 +315,21 @@ Assumptions baked into this draft (flag if wrong):
 3. **No expiry at MVP** — configs live until revoked (expiry is a Phase-3 field).
 4. **No separate superadmin** — 2 admins share full power.
 
+Decided 2026-09-20:
+- **Client private keys are generated server-side and retained encrypted**, so an admin can
+  retrieve any config at any time. Browser-side generation (server never sees the key) was
+  rejected for UI cost; discard-after-display was rejected because admin retrievability is a
+  support requirement. The resulting exposure is owned explicitly in §9.
+- **Config lifecycle = generate / assign / unassign / disable / re-enable / revoke / reassign**
+  (§5). No separate rotate-key
+  action — re-keying is revoke + issue.
+- **Generate and assign are separate steps.** An admin can mint unassigned spares on a node
+  and hand them out later; the WireGuard peer is created **on assign**, not on generate, so a
+  spare is inert until it has an owner (§5).
+- **Key material is admin-only** — ops gets metadata plus the disable/revoke kill switch, never
+  a private key (§2).
+
 Still to decide:
-- Client private key generated **server-side (shown once)** or **in the browser** (server
-  never sees it — stronger, slightly more UI work)?
 - Control-plane domain (highbytestech.com subdomain? new domain?).
 - How users first receive access — Clerk invite email → set password → dashboard.
 
