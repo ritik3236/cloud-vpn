@@ -43,6 +43,17 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // shadcn primitives and its generated hook are vendored upstream source. We don't author
+  // them, and `shadcn add` would overwrite an edit — so the exemption is scoped to these files
+  // rather than the rule being weakened everywhere.
+  {
+    files: ["src/design-system/ui/**", "src/lib/hooks/use-mobile.ts"],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/purity": "off",
+    },
+  },
+
   globalIgnores([
     ".next/**",
     "out/**",
