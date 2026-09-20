@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -49,6 +50,10 @@ type healthResponse struct {
 	Status     string `json:"status"`
 	NodePubkey string `json:"node_pubkey"`
 	WgUp       bool   `json:"wg_up"`
+	// Reported, not enforced. The agent states facts about the host; the control plane decides
+	// whether they disqualify the node (SPEC §10). Null means the value could not be read.
+	IPForward    *bool `json:"ip_forward"`
+	SrcValidMark *bool `json:"src_valid_mark"`
 }
 
 func (s *server) routes() http.Handler {
@@ -168,10 +173,24 @@ func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, healthResponse{
-		Status:     "ok",
-		NodePubkey: device.PublicKey.String(),
-		WgUp:       device.ListenPort != 0,
+		Status:       "ok",
+		NodePubkey:   device.PublicKey.String(),
+		WgUp:         device.ListenPort != 0,
+		IPForward:    readSysctlFlag("/proc/sys/net/ipv4/ip_forward"),
+		SrcValidMark: readSysctlFlag("/proc/sys/net/ipv4/conf/all/src_valid_mark"),
 	})
+}
+
+// readSysctlFlag reads a 0/1 sysctl directly from /proc rather than shelling out to sysctl.
+// These two are the LXC trap in SPEC §12: a container can look healthy, accept peers, and still
+// forward nothing, so onboarding checks them rather than discovering it from a user report.
+func readSysctlFlag(path string) *bool {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	value := strings.TrimSpace(string(raw)) == "1"
+	return &value
 }
 
 // parseKey accepts a WireGuard key as standard base64 (as sent in a JSON body) or base64url

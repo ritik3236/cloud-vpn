@@ -49,5 +49,8 @@ export const health = defineAgentEndpoint({
     status: z.enum(['ok', 'degraded']),
     node_pubkey: z.string(),
     wg_up: z.boolean(),
+    // Optional so an older agent still validates; null when the value could not be read.
+    ip_forward: z.boolean().nullable().optional(),
+    src_valid_mark: z.boolean().nullable().optional(),
   }),
 });
