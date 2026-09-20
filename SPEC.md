@@ -174,7 +174,10 @@ config/peer.** A user with a phone + laptop has two configs. The data model refl
 Proton is a consumer VPN with **no admin API**: you cannot programmatically create or
 revoke a user's Proton tunnel. So in this platform:
 
-- Admin **pastes / uploads** a Proton `.conf` into the vault (stored encrypted).
+- Admin **pastes / uploads** a Proton `.conf` into the vault (stored encrypted). The paste is
+  validated as a real WireGuard config — `[Interface]` with a `PrivateKey`, `[Peer]` with a
+  `PublicKey` and `Endpoint` — and its address is parsed out for display, but the file itself is
+  stored and returned **byte for byte**: it is the provider's artifact, not ours to rewrite.
 - Admin **assigns** it to a user; it appears in the user's dashboard like any other config.
 - The two steps are independent, same as managed (§5): an uploaded `.conf` can sit
   `unassigned` in the vault until someone needs one.

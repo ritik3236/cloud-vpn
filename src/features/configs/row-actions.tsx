@@ -56,6 +56,9 @@ export type ConfigActionRow = {
   assignedIp: string | null;
   deviceLabel: string | null;
   userLabel: string | null;
+  /** Static configs come from a provider we cannot control — SPEC §6. */
+  sourceType: 'managed' | 'static';
+  sourceName: string | null;
 };
 
 export function ConfigRowActions({
@@ -82,6 +85,11 @@ export function ConfigRowActions({
   // seconds. That is 'awkward', so it gets a confirm that names the deed — not type-the-name,
   // which is for damage you genuinely cannot undo.
   const isLive = config.status === 'active';
+  // For an external config there is no peer to remove: disabling hides it from the user, but
+  // the tunnel keeps working until someone deletes the device inside the provider's account.
+  // SPEC §6 is explicit that the UI must not imply otherwise.
+  const external = config.sourceType === 'static';
+  const provider = config.sourceName ?? 'the provider';
 
   const run = (action: () => Promise<{ ok: boolean; message?: string; error?: string }>, undo?: () => void) =>
     startTransition(async () => {
@@ -142,14 +150,14 @@ export function ConfigRowActions({
               }
             >
               <PowerOff className="size-4" />
-              Disable tunnel
+              {external ? 'Hide from user' : 'Disable tunnel'}
             </DropdownMenuItem>
           ) : null}
 
           {config.status === 'disabled' ? (
             <DropdownMenuItem disabled={pending} onSelect={() => run(() => enableConfigAction(config.id))}>
               <Power className="size-4" />
-              Re-enable tunnel
+              {external ? 'Show to user again' : 'Re-enable tunnel'}
             </DropdownMenuItem>
           ) : null}
 
@@ -195,7 +203,9 @@ export function ConfigRowActions({
           <DialogHeader>
             <DialogTitle>Assign {name}</DialogTitle>
             <DialogDescription>
-              This adds the peer to the node — the tunnel goes live as soon as you assign it.
+              {external
+                ? 'They will see this config in their dashboard straight away.'
+                : 'This adds the peer to the node — the tunnel goes live as soon as you assign it.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -252,10 +262,9 @@ export function ConfigRowActions({
           <AlertDialogHeader>
             <AlertDialogTitle>Return {name} to the pool?</AlertDialogTitle>
             <AlertDialogDescription>
-              The tunnel stops and the config becomes a spare you can assign to someone else. If
-              you already sent this file to {config.userLabel ?? 'them'}, revoke it instead —
-              returning it to the pool does not take their copy back, and reassigning it would
-              hand them someone else&apos;s tunnel.
+              {external
+                ? `The config becomes a spare again, but ${provider} has no API we can call — ${config.userLabel ?? 'they'} stay connected until you delete the device inside ${provider}.`
+                : `The tunnel stops and the config becomes a spare you can assign to someone else. If you already sent this file to ${config.userLabel ?? 'them'}, revoke it instead — returning it to the pool does not take their copy back, and reassigning it would hand them someone else's tunnel.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -280,9 +289,11 @@ export function ConfigRowActions({
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke {name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              {isLive
-                ? `This kills ${config.userLabel ?? 'this user'}'s tunnel immediately and cannot be undone. Their config file stops working and its address returns to the pool.`
-                : 'This config can never be used again, and its address returns to the pool.'}
+              {external
+                ? `This removes the config from ${config.userLabel ?? 'this user'}'s dashboard. It does NOT disconnect them — ${provider} has no API we can call, so the tunnel keeps working until you delete the device inside ${provider} yourself.`
+                : isLive
+                  ? `This kills ${config.userLabel ?? 'this user'}'s tunnel immediately and cannot be undone. Their config file stops working and its address returns to the pool.`
+                  : 'This config can never be used again, and its address returns to the pool.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
 

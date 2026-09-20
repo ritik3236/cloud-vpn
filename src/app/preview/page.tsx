@@ -6,6 +6,7 @@ import { DataTable, EmptyState, PageHeader, StatCard } from '@/design-system';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/design-system/ui/sidebar';
 import { configColumns, type ConfigRow } from '@/features/configs/columns';
 import { GenerateConfigDialog } from '@/features/configs/generate-config-dialog';
+import { UploadConfigDialog } from '@/features/configs/upload-config-dialog';
 import { EnrollNodeDialog } from '@/features/nodes/enroll-node-dialog';
 import { AddUserDialog } from '@/features/users/add-user-dialog';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
@@ -30,21 +31,28 @@ const nodes: NodeRow[] = [
 ];
 
 const configs: ConfigRow[] = [
-  { id: 'c1', status: 'active', deviceLabel: 'Phone', assignedIp: '10.8.0.5',
+  { id: 'c1', status: 'active', sourceType: 'managed', externalSource: null, deviceLabel: 'Phone', assignedIp: '10.8.0.5',
     pubkey: 'TID6LaHdOPlzQOtkAQP8k8zD7bQXqZgrR2EPcI2+7kI=',
     createdAt: new Date(Date.now() - 3 * 3600_000),
     node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
-  { id: 'c2', status: 'unassigned', deviceLabel: null, assignedIp: '10.8.0.6',
+  { id: 'c2', status: 'unassigned', sourceType: 'managed', externalSource: null, deviceLabel: null, assignedIp: '10.8.0.6',
     pubkey: 'Bx9QmT4vL2nR7sK1cY5aW8eD3hJ6bU0iO2gZ4lXnPqA=',
     createdAt: new Date(Date.now() - 20 * 60_000), node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: null },
-  { id: 'c3', status: 'disabled', deviceLabel: 'Laptop', assignedIp: '10.8.0.7',
+  { id: 'c3', status: 'disabled', sourceType: 'managed', externalSource: null, deviceLabel: 'Laptop', assignedIp: '10.8.0.7',
     pubkey: 'Mn2Kx7pQ9vR4sT1cL5aY8eW3hD6bJ0iU2gO4zXnPqB=',
     createdAt: new Date(Date.now() - 9 * day),
     node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: null, email: 'ravi@example.com' } },
-  { id: 'c4', status: 'revoked', deviceLabel: 'Old phone', assignedIp: null,
+  { id: 'c4', status: 'revoked', sourceType: 'managed', externalSource: null, deviceLabel: 'Old phone', assignedIp: null,
     pubkey: 'Zq5Wn8mK2xP7vT4sR1cL9aY6eD3hJ0bU2gI4oXnPqC=',
     createdAt: new Date(Date.now() - 88 * day),
     node: { name: 'VPN-2', region: 'Frankfurt', endpoint: '95.216.44.7:51820' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
+  {
+    id: 'c5', status: 'active', sourceType: 'static',
+    externalSource: { name: 'Proton' },
+    deviceLabel: 'Work laptop', assignedIp: '10.2.0.2', pubkey: null,
+    createdAt: new Date(Date.now() - 5 * day), node: null,
+    user: { name: 'Ravi Shah', email: 'ravi@example.com' },
+  },
 ];
 
 /**
@@ -100,8 +108,13 @@ export default async function PreviewPage() {
             </div>
 
             <div className="space-y-5">
-              <PageHeader title="Configs" description="4 configs, 1 live."
-                action={<GenerateConfigDialog nodes={[{ id: 'n1', name: 'VPN-1', region: 'Stockholm' }]} />} />
+              <PageHeader title="Configs" description="5 configs, 2 live."
+                action={
+                  <div className="flex items-center gap-2">
+                    <UploadConfigDialog sources={[{ id: 's1', name: 'Proton' }]} />
+                    <GenerateConfigDialog nodes={[{ id: 'n1', name: 'VPN-1', region: 'Stockholm' }]} />
+                  </div>
+                } />
               <DataTable
                 columns={configColumns([{ id: 'u1', label: 'Asha Menon' }], true)}
                 rows={configs}

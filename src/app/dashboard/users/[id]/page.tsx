@@ -26,7 +26,9 @@ type Row = {
   assignedIp: string | null;
   pubkey: string | null;
   createdAt: Date;
+  sourceType: string;
   node: { name: string; region: string; endpoint: string } | null;
+  externalSource: { name: string } | null;
   usage?: ConfigUsage;
   /** The node could not be reached, so usage is unknown rather than zero. */
   usageUnavailable: boolean;
@@ -56,9 +58,14 @@ const columns = (userLabel: string, canManage: boolean): Column<Row>[] => [
   },
   {
     key: 'node',
-    header: 'Node',
+    header: 'Source',
     cell: (row) =>
-      row.node ? (
+      row.sourceType === 'static' ? (
+        <div className="min-w-0">
+          <div className="truncate text-sm">{row.externalSource?.name ?? 'External'}</div>
+          <div className="truncate text-xs text-muted-foreground">Not managed by us</div>
+        </div>
+      ) : row.node ? (
         <div className="min-w-0">
           <div className="truncate text-sm">{row.node.name}</div>
           <div className="truncate text-xs text-muted-foreground" title={row.node.endpoint}>
@@ -123,6 +130,8 @@ const columns = (userLabel: string, canManage: boolean): Column<Row>[] => [
               assignedIp: row.assignedIp,
               deviceLabel: row.deviceLabel,
               userLabel,
+              sourceType: row.sourceType === 'static' ? 'static' : 'managed',
+              sourceName: row.externalSource?.name ?? null,
             }}
           />
         </div>
@@ -139,7 +148,10 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     include: {
       configs: {
         orderBy: { createdAt: 'desc' },
-        include: { node: { select: { name: true, region: true, endpoint: true } } },
+        include: {
+          node: { select: { name: true, region: true, endpoint: true } },
+          externalSource: { select: { name: true } },
+        },
       },
     },
   });

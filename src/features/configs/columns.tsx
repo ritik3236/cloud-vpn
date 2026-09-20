@@ -16,7 +16,9 @@ export type ConfigRow = {
   assignedIp: string | null;
   pubkey: string | null;
   createdAt: Date;
+  sourceType: string;
   node: { name: string; region: string; endpoint: string } | null;
+  externalSource: { name: string } | null;
   user: { name: string | null; email: string } | null;
 };
 
@@ -55,9 +57,15 @@ export const configColumns = (
   },
   {
     key: 'node',
-    header: 'Node',
+    header: 'Source',
     cell: (config) =>
-      config.node ? (
+      // An external config has no node — it belongs to a provider we do not run.
+      config.sourceType === 'static' ? (
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium">{config.externalSource?.name ?? 'External'}</div>
+          <div className="truncate text-xs text-muted-foreground">Not managed by us</div>
+        </div>
+      ) : config.node ? (
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{config.node.name}</div>
           {/* Where the tunnel actually terminates. The port is noise in a dense row, so the
@@ -110,6 +118,8 @@ export const configColumns = (
             assignedIp: config.assignedIp,
             deviceLabel: config.deviceLabel,
             userLabel: holderOf(config),
+            sourceType: config.sourceType === 'static' ? 'static' : 'managed',
+            sourceName: config.externalSource?.name ?? null,
           }}
         />
       </div>
