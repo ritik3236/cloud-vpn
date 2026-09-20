@@ -39,10 +39,10 @@ export type NodeProbe = {
   problems: string[];
 };
 
-async function probe(agentUrl: string, agentToken: string): Promise<NodeProbe> {
+async function probe(agentUrl: string, agentToken: string, agentCert: string): Promise<NodeProbe> {
   try {
     const health = await api.agent.health(
-      { nodeId: 'unregistered', baseUrl: agentUrl, token: agentToken },
+      { nodeId: 'unregistered', baseUrl: agentUrl, token: agentToken, cert: agentCert },
       {},
     );
 
@@ -82,9 +82,9 @@ async function probe(agentUrl: string, agentToken: string): Promise<NodeProbe> {
 }
 
 /** Dry run for the Add Node form — same checks as `createNode`, without writing anything. */
-export async function probeNode(input: { agentUrl: string; agentToken: string }) {
+export async function probeNode(input: { agentUrl: string; agentToken: string; agentCert: string }) {
   await actingStaff('admin');
-  return probe(input.agentUrl, input.agentToken);
+  return probe(input.agentUrl, input.agentToken, input.agentCert);
 }
 
 function assertEndpoint(endpoint: string) {
@@ -92,6 +92,12 @@ function assertEndpoint(endpoint: string) {
   if (!match) throw new InvalidNodeInput('endpoint', 'must be host:port, e.g. 1.2.3.4:51820');
   const port = Number(match[2]);
   if (port < 1 || port > 65535) throw new InvalidNodeInput('endpoint', `port ${port} is out of range`);
+}
+
+function assertAgentCert(agentCert: string) {
+  if (!agentCert.includes('BEGIN CERTIFICATE')) {
+    throw new InvalidNodeInput('agentCert', 'must be a PEM certificate');
+  }
 }
 
 function assertAgentUrl(agentUrl: string) {
@@ -120,14 +126,21 @@ export async function createNode(input: {
   dns: string;
   agentUrl: string;
   agentToken: string;
+  /**
+   * The node's self-signed certificate (PEM), copied off the node over SSH during provisioning.
+   * Carrying it out of band means there is no trust-on-first-use window for an attacker to
+   * occupy — a wrong or substituted cert fails the TLS handshake and the node is refused.
+   */
+  agentCert: string;
 }) {
   const staff = await actingStaff('admin');
 
   assertEndpoint(input.endpoint);
   assertAgentUrl(input.agentUrl);
+  assertAgentCert(input.agentCert);
   const { first, last } = poolRange(input.cidrPool);
 
-  const result = await probe(input.agentUrl, input.agentToken);
+  const result = await probe(input.agentUrl, input.agentToken, input.agentCert);
   if (!result.reachable || result.problems.length > 0 || !result.nodePubkey) {
     throw new NodePreflightError(result.problems, input.name);
   }
@@ -145,6 +158,7 @@ export async function createNode(input: {
       // that looks entirely correct and silently never completes a handshake.
       nodePubkey: result.nodePubkey,
       agentToken: encrypt(input.agentToken),
+      agentCert: input.agentCert,
     },
   });
 

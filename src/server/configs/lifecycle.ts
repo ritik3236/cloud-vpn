@@ -36,6 +36,7 @@ const agentTargetFor = (node: Node): AgentTarget => ({
   nodeId: node.id,
   baseUrl: node.agentUrl,
   token: decrypt(node.agentToken),
+  cert: node.agentCert,
 });
 
 /**

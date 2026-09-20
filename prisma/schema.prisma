@@ -74,6 +74,9 @@ model Node {
   dns        String
   agentUrl   String     @map("agent_url")
   agentToken String     @map("agent_token") // encrypted with APP_ENCRYPTION_KEY (§9)
+  // The agent's self-signed certificate, pinned. Deliberately not a public CA: a Let's Encrypt
+  // cert per node would publish the whole node inventory to Certificate Transparency logs.
+  agentCert  String     @map("agent_cert")
   status     NodeStatus @default(active)
   createdAt  DateTime   @default(now()) @map("created_at")
 
