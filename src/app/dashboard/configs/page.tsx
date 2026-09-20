@@ -16,7 +16,10 @@ export default async function ConfigsPage() {
     db.config.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
-      include: { node: { select: { name: true } }, user: { select: { name: true, email: true } } },
+      include: {
+        node: { select: { name: true, region: true, endpoint: true } },
+        user: { select: { name: true, email: true } },
+      },
     }),
     db.node.findMany({ where: { status: 'active' }, select: { id: true, name: true, region: true } }),
     // Only active people can receive a config — suspending someone is meant to stop access,

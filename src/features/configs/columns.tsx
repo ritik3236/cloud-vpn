@@ -16,7 +16,7 @@ export type ConfigRow = {
   assignedIp: string | null;
   pubkey: string | null;
   createdAt: Date;
-  node: { name: string } | null;
+  node: { name: string; region: string; endpoint: string } | null;
   user: { name: string | null; email: string } | null;
 };
 
@@ -50,7 +50,23 @@ export const configColumns = (users: AssignableUser[]): Column<ConfigRow>[] => [
       </StatusPill>
     ),
   },
-  { key: 'node', header: 'Node', cell: (config) => <span className="text-sm">{config.node?.name ?? '—'}</span> },
+  {
+    key: 'node',
+    header: 'Node',
+    cell: (config) =>
+      config.node ? (
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium">{config.node.name}</div>
+          {/* Where the tunnel actually terminates. The port is noise in a dense row, so the
+              full host:port stays one hover away. */}
+          <div className="truncate text-xs text-muted-foreground" title={config.node.endpoint}>
+            {config.node.region} · {config.node.endpoint.split(':')[0]}
+          </div>
+        </div>
+      ) : (
+        <span className="text-sm text-muted-foreground">—</span>
+      ),
+  },
   {
     key: 'address',
     header: 'Address',

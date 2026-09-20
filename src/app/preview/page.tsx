@@ -13,7 +13,7 @@ const day = 86_400_000;
 
 const nodes: NodeRow[] = [
   {
-    id: 'n1', name: 'VPN-1', region: 'Singapore', provider: 'njal.la', status: 'active',
+    id: 'n1', name: 'VPN-1', region: 'Stockholm', provider: 'njal.la', status: 'active',
     endpoint: '80.78.31.19:51820', cidrPool: '10.8.0.0/24',
     nodePubkey: '9VvXP4QKfb3so09suPMaNr+0HwhDCFWIPz/ydL4m9kU=',
     createdAt: new Date(Date.now() - 2 * day), _count: { configs: 12 },
@@ -30,18 +30,18 @@ const configs: ConfigRow[] = [
   { id: 'c1', status: 'active', deviceLabel: 'Phone', assignedIp: '10.8.0.5',
     pubkey: 'TID6LaHdOPlzQOtkAQP8k8zD7bQXqZgrR2EPcI2+7kI=',
     createdAt: new Date(Date.now() - 3 * 3600_000),
-    node: { name: 'VPN-1' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
+    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
   { id: 'c2', status: 'unassigned', deviceLabel: null, assignedIp: '10.8.0.6',
     pubkey: 'Bx9QmT4vL2nR7sK1cY5aW8eD3hJ6bU0iO2gZ4lXnPqA=',
-    createdAt: new Date(Date.now() - 20 * 60_000), node: { name: 'VPN-1' }, user: null },
+    createdAt: new Date(Date.now() - 20 * 60_000), node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: null },
   { id: 'c3', status: 'disabled', deviceLabel: 'Laptop', assignedIp: '10.8.0.7',
     pubkey: 'Mn2Kx7pQ9vR4sT1cL5aY8eW3hD6bJ0iU2gO4zXnPqB=',
     createdAt: new Date(Date.now() - 9 * day),
-    node: { name: 'VPN-1' }, user: { name: null, email: 'ravi@example.com' } },
+    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: null, email: 'ravi@example.com' } },
   { id: 'c4', status: 'revoked', deviceLabel: 'Old phone', assignedIp: null,
     pubkey: 'Zq5Wn8mK2xP7vT4sR1cL9aY6eD3hJ0bU2gI4oXnPqC=',
     createdAt: new Date(Date.now() - 88 * day),
-    node: { name: 'VPN-2' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
+    node: { name: 'VPN-2', region: 'Frankfurt', endpoint: '95.216.44.7:51820' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
 ];
 
 /**
@@ -78,7 +78,7 @@ export default function PreviewPage() {
 
             <div className="space-y-5">
               <PageHeader title="Configs" description="4 configs, 1 live."
-                action={<GenerateConfigDialog nodes={[{ id: 'n1', name: 'VPN-1', region: 'Singapore' }]} />} />
+                action={<GenerateConfigDialog nodes={[{ id: 'n1', name: 'VPN-1', region: 'Stockholm' }]} />} />
               <DataTable
                 columns={configColumns([{ id: 'u1', label: 'Asha Menon' }])}
                 rows={configs}
