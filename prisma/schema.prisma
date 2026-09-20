@@ -1,0 +1,165 @@
+// Cloud VPN control plane — schema mirrors SPEC.md §8.
+// Lifecycle semantics (generate → assign → disable/enable → revoke/reassign) live in §5.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 removed `url`/`directUrl` from this block. Migrations read DIRECT_URL via
+// prisma.config.ts; the runtime client connects pooled through a driver adapter (server/db.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  active
+  suspended
+}
+
+enum StaffRole {
+  admin
+  ops
+}
+
+enum NodeStatus {
+  active
+  degraded
+  disabled
+}
+
+enum SourceType {
+  managed
+  static
+}
+
+enum ConfigStatus {
+  unassigned
+  active
+  disabled
+  revoked
+}
+
+model User {
+  id        String     @id @default(cuid())
+  clerkId   String?    @unique @map("clerk_id")
+  name      String?
+  email     String     @unique
+  status    UserStatus @default(active)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  configs Config[]
+
+  @@map("users")
+}
+
+model Staff {
+  id        String    @id @default(cuid())
+  clerkId   String    @unique @map("clerk_id")
+  role      StaffRole
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  issuedConfigs Config[] @relation("IssuedBy")
+
+  @@map("staff")
+}
+
+model Node {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  region     String
+  provider   String
+  endpoint   String // host:port advertised to clients
+  nodePubkey String     @map("node_pubkey")
+  cidrPool   String     @map("cidr_pool")
+  dns        String
+  agentUrl   String     @map("agent_url")
+  agentToken String     @map("agent_token") // encrypted with APP_ENCRYPTION_KEY (§9)
+  status     NodeStatus @default(active)
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  configs       Config[]
+  ipAllocations IpAllocation[]
+
+  @@map("nodes")
+}
+
+model ExternalSource {
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g. "Proton"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  configs Config[]
+
+  @@map("external_sources")
+}
+
+model IpAllocation {
+  id         String    @id @default(cuid())
+  nodeId     String    @map("node_id")
+  ip         String
+  configId   String?   @unique @map("config_id")
+  releasedAt DateTime? @map("released_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  node   Node    @relation(fields: [nodeId], references: [id], onDelete: Restrict)
+  config Config? @relation(fields: [configId], references: [id], onDelete: SetNull)
+
+  // The no-double-assign guarantee is a PARTIAL unique index — (node_id, ip) unique only
+  // WHERE released_at IS NULL — so a released IP can be handed out again while its history
+  // row survives. Prisma cannot express that, so the migration adds it as raw SQL.
+  @@index([nodeId, releasedAt])
+  @@map("ip_allocations")
+}
+
+model Config {
+  id          String     @id @default(cuid())
+  userId      String?    @map("user_id") // null while `unassigned` (§5)
+  deviceLabel String?    @map("device_label")
+  sourceType  SourceType @map("source_type")
+
+  // managed driver
+  nodeId           String? @map("node_id")
+  pubkey           String? @unique
+  encryptedPrivkey String? @map("encrypted_privkey") // encrypted with APP_ENCRYPTION_KEY (§9)
+  assignedIp       String? @map("assigned_ip")
+
+  // static driver (Proton et al, §6)
+  externalSourceId String? @map("external_source_id")
+  encryptedConf    String? @map("encrypted_conf")
+
+  allowedIps   String       @default("0.0.0.0/0") @map("allowed_ips")
+  status       ConfigStatus @default(unassigned)
+  replacedById String?      @unique @map("replaced_by_id") // set on reassign (§5)
+
+  issuedById String    @map("issued_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  assignedAt DateTime? @map("assigned_at")
+  disabledAt DateTime? @map("disabled_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  user           User?           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  node           Node?           @relation(fields: [nodeId], references: [id], onDelete: Restrict)
+  externalSource ExternalSource? @relation(fields: [externalSourceId], references: [id], onDelete: Restrict)
+  issuedBy       Staff           @relation("IssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+  replacedBy     Config?         @relation("Replacement", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces       Config?         @relation("Replacement")
+  ipAllocation   IpAllocation?
+
+  @@index([userId, status])
+  @@index([nodeId, status])
+  @@index([status])
+  @@map("configs")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?  @map("actor_id") // Clerk id of the acting staff member
+  action    String // see AUDIT_ACTIONS in src/server/audit.ts
+  target    String?
+  detail    Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([action, createdAt])
+  @@index([target])
+  @@map("audit_log")
+}
