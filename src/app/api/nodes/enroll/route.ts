@@ -14,6 +14,7 @@ const Body = z.object({
   agent_url: z.string().min(1),
   agent_token: z.string().min(1),
   agent_cert: z.string().min(1),
+  interface_address: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
       agentUrl: parsed.data.agent_url,
       agentToken: parsed.data.agent_token,
       agentCert: parsed.data.agent_cert,
+      interfaceAddress: parsed.data.interface_address,
     });
     return NextResponse.json({ ok: true, node: { id: node.id, name: node.name } });
   } catch (error) {
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
       // 422 when the token was fine but the node isn't ready — the installer can say which.
       return NextResponse.json(
         { error: error.message },
-        { status: error.code === 'preflight' ? 422 : 401 },
+        { status: error.code === 'preflight' ? 422 : error.code === 'duplicate' ? 409 : 401 },
       );
     }
     console.error('enrollment failed', error);

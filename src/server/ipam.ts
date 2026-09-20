@@ -61,6 +61,16 @@ export async function allocateIp(
   throw new PoolExhaustedError(input.nodeId, input.cidrPool);
 }
 
+/** Is this address inside the pool at all? Catches a node whose interface sits elsewhere. */
+export function poolContains(cidr: string, address: string): boolean {
+  const bare = address.split('/')[0];
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(bare)) return false;
+  const { first, last } = poolRange(cidr);
+  const value = ipToInt(bare);
+  // `first` excludes the node's own .1, which is exactly the address being checked here.
+  return value >= first - 1 && value <= last + 1;
+}
+
 /** Revoke returns the address to the pool; disable deliberately does not (SPEC §5). */
 export async function releaseIp(tx: Prisma.TransactionClient, configId: string): Promise<void> {
   await tx.ipAllocation.updateMany({

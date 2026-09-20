@@ -5,7 +5,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AUDIT_ACTIONS, recordAudit } from '@/server/audit';
 import { encrypt } from '@/server/crypto';
 import { db } from '@/server/db';
-import { poolRange } from '@/server/ipam';
+import { poolContains, poolRange } from '@/server/ipam';
 import { probeNodeAgent } from '@/server/nodes';
 import { actingStaff } from '@/server/staff';
 
@@ -14,7 +14,7 @@ const PREFIX = 'cvpn_';
 
 export class EnrollmentError extends Error {
   constructor(
-    readonly code: 'invalid' | 'used' | 'expired' | 'preflight',
+    readonly code: 'invalid' | 'used' | 'expired' | 'preflight' | 'duplicate',
     message: string,
   ) {
     super(message);
@@ -75,6 +75,8 @@ export async function enrollNode(input: {
   agentUrl: string;
   agentToken: string;
   agentCert: string;
+  /** The adopted interface's own address, when the node already ran WireGuard. */
+  interfaceAddress?: string;
 }) {
   const candidates = await db.enrollmentToken.findMany({
     where: { usedAt: null },
@@ -93,6 +95,37 @@ export async function enrollNode(input: {
   if (record.usedAt) throw new EnrollmentError('used', 'that enrollment token was already used');
   if (record.expiresAt < new Date()) {
     throw new EnrollmentError('expired', 'that enrollment token has expired — generate another');
+  }
+
+  // Deleting the manual path took this check with it. The bearer token travels on every agent
+  // call, so a plaintext agent URL would put it on the wire in the clear.
+  let parsed: URL;
+  try {
+    parsed = new URL(input.agentUrl);
+  } catch {
+    throw new EnrollmentError('preflight', 'agent_url must be an absolute URL');
+  }
+  if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') {
+    throw new EnrollmentError('preflight', 'agent_url must be https');
+  }
+  if (!input.agentCert.includes('BEGIN CERTIFICATE')) {
+    throw new EnrollmentError('preflight', 'agent_cert must be a PEM certificate');
+  }
+
+  if (await db.node.findUnique({ where: { name: record.name } })) {
+    throw new EnrollmentError(
+      'duplicate',
+      `a node called ${record.name} is already registered — remove it first, or enroll under a different name`,
+    );
+  }
+
+  // An adopted node keeps its own interface. If that sits outside the declared pool, every
+  // config issued for it would carry an address the node does not route.
+  if (input.interfaceAddress && !poolContains(record.cidrPool, input.interfaceAddress)) {
+    throw new EnrollmentError(
+      'preflight',
+      `the node's interface is ${input.interfaceAddress}, which is outside the pool ${record.cidrPool} you declared`,
+    );
   }
 
   const probe = await probeNodeAgent(input.agentUrl, input.agentToken, input.agentCert);

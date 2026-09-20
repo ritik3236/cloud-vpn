@@ -314,6 +314,18 @@ the agent token and certificate into a form. That removed the trust-on-first-use
 a manual secret-handling step in front of every node; the enrollment token achieves the same
 guarantee with one command.
 
+**A node that already runs WireGuard is adopted, never reconfigured.** The installer detects an
+existing interface and touches only the agent, reading the interface's real listen port and
+address instead of imposing its own — rewriting a live `wg0.conf` would change the node's
+address and port and drop every tunnel on it. The reported interface address is checked against
+the declared pool at enrollment, so a node whose interface sits outside the pool is refused
+rather than issued configs it cannot route.
+
+**Re-running the installer is safe.** It reuses an existing agent certificate and token rather
+than minting new ones — regenerating them would orphan an already-registered node, because the
+control plane pins the old certificate. A second enrollment under a name already in use is
+refused with a `409`.
+
 No per-node dashboard, no per-domain login — that friction is gone.
 
 ---
