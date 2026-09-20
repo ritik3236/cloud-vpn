@@ -17,16 +17,6 @@ export class ConfigStateError extends Error {
   }
 }
 
-export class DeliveredConfigError extends Error {
-  constructor(configId: string) {
-    super(
-      `config ${configId} has been retrieved at least once, so its key may be in someone's hands; ` +
-        'revoke it and generate a fresh one instead of returning it to the pool',
-    );
-    this.name = 'DeliveredConfigError';
-  }
-}
-
 type ConfigWithNode = Config & { node: Node | null };
 
 const load = (configId: string) =>
@@ -123,8 +113,10 @@ export async function assignConfig(input: { configId: string; userId: string }) 
 }
 
 /**
- * Return a spare to the pool. Only safe if it was never delivered (SPEC §5) — the audit log is
- * the strongest delivery signal available, though it cannot see a key copied by other means.
+ * Return a config to the pool. The caller is warned when the key has been retrieved before —
+ * but not blocked: the audit log is a proxy for delivery, not proof of it, and refusing a
+ * legitimate action on a guess is worse than letting an admin make an informed call. The
+ * retrieval count goes into the audit entry so the decision is on the record.
  */
 export async function unassignConfig(input: { configId: string }) {
   const staff = await actingStaff('admin');
@@ -136,7 +128,6 @@ export async function unassignConfig(input: { configId: string }) {
   const retrievals = await db.auditLog.count({
     where: { action: AUDIT_ACTIONS.configView, target: config.id },
   });
-  if (retrievals > 0) throw new DeliveredConfigError(config.id);
 
   const managed = managedParts(config);
   if (managed) {
@@ -151,6 +142,7 @@ export async function unassignConfig(input: { configId: string }) {
     actorId: staff.clerkId,
     action: AUDIT_ACTIONS.configUnassign,
     target: config.id,
+    detail: { retrievalsBefore: retrievals },
   });
   return updated;
 }

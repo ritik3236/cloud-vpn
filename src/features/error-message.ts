@@ -1,6 +1,6 @@
 import { AgentError } from '@/api';
 import { ForbiddenError, UnauthenticatedError } from '@/auth/roles';
-import { ConfigStateError, DeliveredConfigError } from '@/server/configs/lifecycle';
+import { ConfigStateError } from '@/server/configs/lifecycle';
 import { PoolExhaustedError } from '@/server/ipam';
 import { InvalidNodeInput, NodeInUseError, NodePreflightError } from '@/server/nodes';
 import { DuplicateUserError, InvalidUserInput } from '@/server/users';
@@ -18,7 +18,6 @@ export function errorMessage(error: unknown): string {
   if (error instanceof InvalidUserInput) return error.message;
   if (error instanceof DuplicateUserError) return error.message;
   if (error instanceof NodeInUseError) return error.message;
-  if (error instanceof DeliveredConfigError) return error.message;
   if (error instanceof ConfigStateError) return error.message;
   if (error instanceof PoolExhaustedError) {
     return 'That node has no addresses left. Revoke some configs or give it a larger pool.';

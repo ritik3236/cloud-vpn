@@ -145,9 +145,10 @@ quietly handing out a dead config.
 | **Revoke** (terminal) | `remove-peer` | `revoked` | released to pool | dead |
 | **Reassign** to another user | remove old peer, add new | old `revoked` + `replaced_by_id` → new | old released, new allocated | dead; new user gets a new file |
 
-- **Unassign returns a config to the pool only if it was never delivered.** Once the `.conf`
-  has left the building the holder keeps a copy, so re-handing that same config to someone
-  else is the hole described under Reassign — revoke it and generate a fresh spare instead.
+- **Unassign warns, it does not refuse.** Once a `.conf` has left the building the holder keeps
+  a copy, so re-handing that same config to someone else is the hole described under Reassign.
+  The UI says so at the point of action and the retrieval count goes into the audit entry — but
+  the admin decides, because the audit log is a proxy for delivery and not proof of it.
 - Disable is *exactly* reversible: a WireGuard config is only key + endpoint, so re-adding the
   same pubkey and IP makes the user's original file resume working — no re-download needed.
 - **Reassign issues a fresh keypair; it never transfers the old one.** The previous holder
@@ -206,14 +207,16 @@ A minimal authenticated HTTP(S) service on each node. The control plane is the o
 - **Auth:** bearer token per node (stored in the DB, per node), required on **every** endpoint
   including `/health`, which would otherwise leak the node's public key.
 - **TLS by pinned self-signed certificate.** Each node generates a long-lived self-signed cert
-  with its own IP in the SAN; the PEM is copied off the node during provisioning and stored in
-  `nodes.agent_cert`, and the control plane trusts *only* that certificate. Deliberately **not**
-  a public CA: a Let's Encrypt cert per node would publish the entire node inventory to
-  Certificate Transparency logs — a permanent, public leak for a privacy VPN — and would add a
-  DNS record and a renewal story to every node. Pinning needs none of those. Carrying the PEM
-  out of band (over the SSH session that installs the agent) also removes any
-  trust-on-first-use window. mTLS, which additionally authenticates the control plane to the
-  node, is the natural next step from here.
+  with its own IP in the SAN and sends it to the control plane **at enrollment** (§10), where it
+  is stored in `nodes.agent_cert`; the control plane then trusts *only* that certificate.
+  Deliberately **not** a public CA: a Let's Encrypt cert per node would publish the entire node
+  inventory to Certificate Transparency logs — a permanent, public leak for a privacy VPN — and
+  would add a DNS record and a renewal story to every node.
+- **The enrollment token is what makes that safe.** Accepting a certificate the control plane
+  has never seen is trust-on-first-use, so the node proves it is ours with a single-use secret,
+  over a connection the node verifies against the control plane's ordinary public certificate.
+  One public hostname is fine to publish; a list of node addresses is not. mTLS, which also
+  authenticates the control plane to the node, is the natural next step.
 - **Implementation:** the agent talks to the kernel over **netlink** (`wgctrl`), never by shelling
   out to `wg` — there is no code path that can be command-injected, and handshake/transfer
   counters come back directly.
@@ -290,13 +293,26 @@ Adding a node on **any** provider becomes:
 1. Spin up a VPS (KVM preferred; LXC → verify sysctls).
 2. Install WireGuard + drop the Go agent (one binary + a systemd unit or container).
 3. Open UDP (wg port) publicly + agent port to the control plane.
-4. In the dashboard: **Add node** → name, region, endpoint, CIDR pool, DNS, agent URL+token.
-   The control plane **probes the agent before saving**: it must answer, authenticate the token,
-   report `wg_up`, and report `ip_forward` and `src_valid_mark` as true. A node that fails is
-   refused rather than registered and discovered broken later. The node's public key is read
-   **from the agent**, never typed — a mistyped key yields configs that look correct and never
-   handshake.
-5. Node is now a selectable "location" admins can issue configs for.
+4. In the dashboard: **Add node** → name, region, CIDR pool, DNS. This mints a **single-use
+   enrollment token** (one hour) and returns one command to run on the server as root:
+
+   ```
+   curl -fsSL https://<control-plane>/install.sh | sudo sh -s -- --token=cvpn_… --server=https://<control-plane>
+   ```
+
+   The installer does steps 1–3 itself: WireGuard, the sysctls, the agent, and a self-signed
+   certificate with the node's own IP in the SAN. It then calls `POST /api/nodes/enroll` with
+   its endpoint, agent URL, agent token and certificate.
+5. The control plane **probes the agent before saving**: it must answer, authenticate, report
+   `wg_up`, and report `ip_forward` and `src_valid_mark` as true. A node that fails is refused
+   rather than registered and discovered broken later. The node's public key is read **from the
+   agent**, never typed — a mistyped key yields configs that look correct and never handshake.
+6. Node is now a selectable "location" admins can issue configs for.
+
+**Nothing is copied off the box by hand.** An earlier design had the operator SSH in and paste
+the agent token and certificate into a form. That removed the trust-on-first-use window but put
+a manual secret-handling step in front of every node; the enrollment token achieves the same
+guarantee with one command.
 
 No per-node dashboard, no per-domain login — that friction is gone.
 

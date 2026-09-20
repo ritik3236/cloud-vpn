@@ -1,6 +1,6 @@
 'use client';
 
-import { MoreHorizontal, Power, PowerOff, Trash2, UserPlus } from 'lucide-react';
+import { MoreHorizontal, Power, PowerOff, Trash2, Undo2, UserPlus } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -28,7 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/ui/dialog';
-import { Input } from '@/design-system/ui/input';
 import { Label } from '@/design-system/ui/label';
 import {
   Select,
@@ -43,6 +42,7 @@ import {
   disableConfigAction,
   enableConfigAction,
   revokeConfigAction,
+  unassignConfigAction,
 } from './actions';
 
 export type AssignableUser = { id: string; label: string };
@@ -64,13 +64,14 @@ export function ConfigRowActions({
 }) {
   const [pending, startTransition] = React.useTransition();
   const [confirming, setConfirming] = React.useState(false);
+  const [returning, setReturning] = React.useState(false);
   const [assigning, setAssigning] = React.useState(false);
   const [assignee, setAssignee] = React.useState<string>('');
-  const [typed, setTyped] = React.useState('');
 
   const name = config.assignedIp ?? config.id;
-  // Revoking a spare nobody holds is not the same act as killing a live tunnel, so the speed
-  // bump is sized to the damage rather than applied uniformly.
+  // Revoking is irreversible but not catastrophic: the fix is issuing a new config, which takes
+  // seconds. That is 'awkward', so it gets a confirm that names the deed — not type-the-name,
+  // which is for damage you genuinely cannot undo.
   const isLive = config.status === 'active';
 
   const run = (action: () => Promise<{ ok: boolean; message?: string; error?: string }>, undo?: () => void) =>
@@ -129,13 +130,25 @@ export function ConfigRowActions({
             </DropdownMenuItem>
           ) : null}
 
+          {config.status === 'active' ? (
+            <DropdownMenuItem
+              disabled={pending}
+              onSelect={(event) => {
+                event.preventDefault();
+                setReturning(true);
+              }}
+            >
+              <Undo2 className="size-4" />
+              Return to pool
+            </DropdownMenuItem>
+          ) : null}
+
           {config.status !== 'revoked' ? (
             <DropdownMenuItem
               variant="destructive"
               disabled={pending}
               onSelect={(event) => {
                 event.preventDefault();
-                setTyped('');
                 setConfirming(true);
               }}
             >
@@ -203,6 +216,34 @@ export function ConfigRowActions({
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={returning} onOpenChange={setReturning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Return {name} to the pool?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The tunnel stops and the config becomes a spare you can assign to someone else. If
+              you already sent this file to {config.userLabel ?? 'them'}, revoke it instead —
+              returning it to the pool does not take their copy back, and reassigning it would
+              hand them someone else&apos;s tunnel.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-8">Cancel</AlertDialogCancel>
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                setReturning(false);
+                run(() => unassignConfigAction(config.id));
+              }}
+            >
+              <Undo2 className="size-4" />
+              {pending ? 'Returning…' : 'Return to pool'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -214,21 +255,6 @@ export function ConfigRowActions({
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {isLive ? (
-            <div className="space-y-1.5">
-              <label htmlFor="confirm-ip" className="text-sm">
-                Type <span className="font-mono font-medium">{name}</span> to confirm
-              </label>
-              <Input
-                id="confirm-ip"
-                value={typed}
-                onChange={(event) => setTyped(event.target.value)}
-                className="h-8 font-mono"
-                autoComplete="off"
-              />
-            </div>
-          ) : null}
-
           <AlertDialogFooter>
             <AlertDialogCancel className="h-8">Keep it</AlertDialogCancel>
             <Button
@@ -236,10 +262,6 @@ export function ConfigRowActions({
               size="sm"
               className="h-8"
               onClick={() => {
-                if (isLive && typed !== name) {
-                  toast.error(`Type ${name} exactly to confirm.`);
-                  return;
-                }
                 setConfirming(false);
                 run(() => revokeConfigAction(config.id));
               }}

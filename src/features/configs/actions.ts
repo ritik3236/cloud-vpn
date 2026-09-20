@@ -10,6 +10,7 @@ import {
   enableConfig,
   generateConfig,
   revokeConfig,
+  unassignConfig,
 } from '@/server/configs/lifecycle';
 
 const done = (message: string): ActionResult => {
@@ -37,6 +38,15 @@ export async function assignConfigAction(configId: string, userId: string): Prom
   try {
     await assignConfig({ configId, userId });
     return done('Config assigned. The tunnel is live.');
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function unassignConfigAction(configId: string): Promise<ActionResult> {
+  try {
+    await unassignConfig({ configId });
+    return done('Config returned to the pool. Their copy of the file no longer connects.');
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }
