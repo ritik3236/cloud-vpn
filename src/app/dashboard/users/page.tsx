@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { requireRole } from '@/auth/roles';
 import { Copyable, DataTable, EmptyState, PageHeader, StatusPill, type Column } from '@/design-system';
 import { AddUserDialog } from '@/features/users/add-user-dialog';
@@ -23,7 +25,14 @@ const columns = (canManage: boolean): Column<UserRow>[] => [
     header: 'Person',
     cell: (user) => (
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{labelOf(user)}</div>
+        {/* The name is the link, not the row — the row also carries an actions menu, and a
+            button inside a link is not a thing. */}
+        <Link
+          href={`/dashboard/users/${user.id}`}
+          className="truncate text-sm font-medium hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          {labelOf(user)}
+        </Link>
         {user.name ? <div className="truncate text-xs text-muted-foreground">{user.email}</div> : null}
       </div>
     ),

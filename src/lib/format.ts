@@ -51,3 +51,17 @@ export function truncateId(value: string, head = 8, tail = 6) {
   if (value.length <= head + tail + 1) return value;
   return `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
+
+const BYTE_UNITS = ['B', 'kB', 'MB', 'GB', 'TB'];
+
+/** Transfer counters read at a glance: 0 B, 812 kB, 4.3 GB. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1000) return `${bytes} B`;
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1000 && unit < BYTE_UNITS.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+  return `${value.toFixed(value < 10 ? 1 : 0)} ${BYTE_UNITS[unit]}`;
+}
