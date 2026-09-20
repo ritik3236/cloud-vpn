@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "check:primitives": "NODE_OPTIONS=--conditions=react-server tsx scripts/check-lifecycle-primitives.ts",
-    "probe:node": "NODE_OPTIONS=--conditions=react-server tsx scripts/probe-node.ts"
+    "probe:node": "NODE_OPTIONS=--conditions=react-server tsx scripts/probe-node.ts",
+    "mint:token": "NODE_OPTIONS=--conditions=react-server tsx scripts/mint-enrollment-token.ts",
+    "node:status": "NODE_OPTIONS=--conditions=react-server tsx scripts/node-status.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.4",

@@ -30,6 +30,9 @@ prisma/*.db-journal
 # --- Go node agent ---
 agent/cloud-vpn-agent
 agent/bin/
+# Build output: produced by agent/build.sh, served by /download/*. Not in git — a 6 MB
+# binary per commit, and the deploy builds it anyway.
+agent/dist/
 *.exe
 *.test
 *.out
