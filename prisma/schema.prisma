@@ -58,7 +58,8 @@ model Staff {
   role      StaffRole
   createdAt DateTime  @default(now()) @map("created_at")
 
-  issuedConfigs Config[] @relation("IssuedBy")
+  issuedConfigs    Config[]          @relation("IssuedBy")
+  enrollmentTokens EnrollmentToken[]
 
   @@map("staff")
 }
@@ -152,6 +153,32 @@ model Config {
   @@index([nodeId, status])
   @@index([status])
   @@map("configs")
+}
+
+/**
+ * A single-use secret that lets a node register itself. The admin fills in the human details
+ * here; the node supplies its own key, certificate and endpoint at enrollment, so no secret is
+ * ever copied off the box by hand.
+ */
+model EnrollmentToken {
+  id        String    @id @default(cuid())
+  // Only the hash is stored: a database leak must not yield usable enrollment secrets.
+  tokenHash String    @unique @map("token_hash")
+  name      String
+  region    String
+  provider  String
+  cidrPool  String    @map("cidr_pool")
+  dns       String
+  createdById String  @map("created_by")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  nodeId    String?   @map("node_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  createdBy Staff @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([expiresAt, usedAt])
+  @@map("enrollment_tokens")
 }
 
 model AuditLog {

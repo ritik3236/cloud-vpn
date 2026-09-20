@@ -1,6 +1,8 @@
+import { headers } from 'next/headers';
+
 import { requireRole } from '@/auth/roles';
 import { DataTable, EmptyState, PageHeader } from '@/design-system';
-import { AddNodeDialog } from '@/features/nodes/add-node-dialog';
+import { EnrollNodeDialog } from '@/features/nodes/enroll-node-dialog';
 import { nodeColumns } from '@/features/nodes/columns';
 import { db } from '@/server/db';
 import { pluralise } from '@/lib/format';
@@ -8,6 +10,11 @@ import { pluralise } from '@/lib/format';
 export default async function NodesPage() {
   // Checked here, not in the proxy — path matching can diverge from how Next routes (SPEC §2).
   const { role } = await requireRole('admin', 'ops');
+
+  // The install command has to name this control plane, and the node reaches it over the same
+  // origin the admin is already using.
+  const incoming = await headers();
+  const serverUrl = `${incoming.get('x-forwarded-proto') ?? 'http'}://${incoming.get('host') ?? 'localhost:3000'}`;
 
   const nodes = await db.node.findMany({
     orderBy: { createdAt: 'desc' },
@@ -25,7 +32,7 @@ export default async function NodesPage() {
             ? `${pluralise(nodes.length, 'node')} issuing configs.`
             : 'Servers that terminate client tunnels.'
         }
-        action={canAdd ? <AddNodeDialog /> : null}
+        action={canAdd ? <EnrollNodeDialog serverUrl={serverUrl} /> : null}
       />
 
       {nodes.length === 0 ? (
@@ -36,7 +43,7 @@ export default async function NodesPage() {
               ? 'Install the agent on a server, then add it here to start issuing configs.'
               : 'An admin needs to add the first node.'
           }
-          action={canAdd ? <AddNodeDialog /> : null}
+          action={canAdd ? <EnrollNodeDialog serverUrl={serverUrl} /> : null}
         />
       ) : (
         <DataTable columns={nodeColumns} rows={nodes} rowKey={(node) => node.id} />

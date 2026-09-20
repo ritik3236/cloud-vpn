@@ -2,9 +2,7 @@ import 'server-only';
 
 import { api, AgentError } from '@/api';
 import { AUDIT_ACTIONS, recordAudit } from '@/server/audit';
-import { encrypt } from '@/server/crypto';
 import { db } from '@/server/db';
-import { poolRange } from '@/server/ipam';
 import { actingStaff } from '@/server/staff';
 
 export class InvalidNodeInput extends Error {
@@ -39,7 +37,11 @@ export type NodeProbe = {
   problems: string[];
 };
 
-async function probe(agentUrl: string, agentToken: string, agentCert: string): Promise<NodeProbe> {
+export async function probeNodeAgent(
+  agentUrl: string,
+  agentToken: string,
+  agentCert: string,
+): Promise<NodeProbe> {
   try {
     const health = await api.agent.health(
       { nodeId: 'unregistered', baseUrl: agentUrl, token: agentToken, cert: agentCert },
@@ -84,91 +86,7 @@ async function probe(agentUrl: string, agentToken: string, agentCert: string): P
 /** Dry run for the Add Node form — same checks as `createNode`, without writing anything. */
 export async function probeNode(input: { agentUrl: string; agentToken: string; agentCert: string }) {
   await actingStaff('admin');
-  return probe(input.agentUrl, input.agentToken, input.agentCert);
-}
-
-function assertEndpoint(endpoint: string) {
-  const match = /^(\S+):(\d{1,5})$/.exec(endpoint);
-  if (!match) throw new InvalidNodeInput('endpoint', 'must be host:port, e.g. 1.2.3.4:51820');
-  const port = Number(match[2]);
-  if (port < 1 || port > 65535) throw new InvalidNodeInput('endpoint', `port ${port} is out of range`);
-}
-
-function assertAgentCert(agentCert: string) {
-  if (!agentCert.includes('BEGIN CERTIFICATE')) {
-    throw new InvalidNodeInput('agentCert', 'must be a PEM certificate');
-  }
-}
-
-function assertAgentUrl(agentUrl: string) {
-  let parsed: URL;
-  try {
-    parsed = new URL(agentUrl);
-  } catch {
-    throw new InvalidNodeInput('agentUrl', 'must be an absolute URL');
-  }
-  if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') {
-    throw new InvalidNodeInput('agentUrl', 'must be https — the bearer token travels on every call');
-  }
-}
-
-/**
- * Register a node (SPEC §10 step 4). The agent must already be running: onboarding verifies it
- * end to end rather than trusting the form, so a node is either usable the moment it is listed
- * or never listed at all.
- */
-export async function createNode(input: {
-  name: string;
-  region: string;
-  provider: string;
-  endpoint: string;
-  cidrPool: string;
-  dns: string;
-  agentUrl: string;
-  agentToken: string;
-  /**
-   * The node's self-signed certificate (PEM), copied off the node over SSH during provisioning.
-   * Carrying it out of band means there is no trust-on-first-use window for an attacker to
-   * occupy — a wrong or substituted cert fails the TLS handshake and the node is refused.
-   */
-  agentCert: string;
-}) {
-  const staff = await actingStaff('admin');
-
-  assertEndpoint(input.endpoint);
-  assertAgentUrl(input.agentUrl);
-  assertAgentCert(input.agentCert);
-  const { first, last } = poolRange(input.cidrPool);
-
-  const result = await probe(input.agentUrl, input.agentToken, input.agentCert);
-  if (!result.reachable || result.problems.length > 0 || !result.nodePubkey) {
-    throw new NodePreflightError(result.problems, input.name);
-  }
-
-  const node = await db.node.create({
-    data: {
-      name: input.name,
-      region: input.region,
-      provider: input.provider,
-      endpoint: input.endpoint,
-      cidrPool: input.cidrPool,
-      dns: input.dns,
-      agentUrl: input.agentUrl,
-      // Read from the agent, never typed by a human. A mistyped node public key yields a config
-      // that looks entirely correct and silently never completes a handshake.
-      nodePubkey: result.nodePubkey,
-      agentToken: encrypt(input.agentToken),
-      agentCert: input.agentCert,
-    },
-  });
-
-  await recordAudit({
-    actorId: staff.clerkId,
-    action: AUDIT_ACTIONS.nodeCreate,
-    target: node.id,
-    detail: { name: node.name, endpoint: node.endpoint, capacity: last - first + 1 },
-  });
-  return node;
+  return probeNodeAgent(input.agentUrl, input.agentToken, input.agentCert);
 }
 
 /**

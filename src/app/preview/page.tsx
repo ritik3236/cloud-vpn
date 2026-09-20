@@ -5,7 +5,7 @@ import { DataTable, EmptyState, PageHeader, StatCard } from '@/design-system';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/design-system/ui/sidebar';
 import { configColumns, type ConfigRow } from '@/features/configs/columns';
 import { GenerateConfigDialog } from '@/features/configs/generate-config-dialog';
-import { AddNodeDialog } from '@/features/nodes/add-node-dialog';
+import { EnrollNodeDialog } from '@/features/nodes/enroll-node-dialog';
 import { AddUserDialog } from '@/features/users/add-user-dialog';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
 
@@ -72,7 +72,7 @@ export default function PreviewPage() {
             </div>
 
             <div className="space-y-5">
-              <PageHeader title="Nodes" description="2 nodes issuing configs." action={<AddNodeDialog />} />
+              <PageHeader title="Nodes" description="2 nodes issuing configs." action={<EnrollNodeDialog serverUrl="https://vpn.zoiee.me" />} />
               <DataTable columns={nodeColumns} rows={nodes} rowKey={(n) => n.id} />
             </div>
 

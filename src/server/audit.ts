@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = {
   configEnable: 'config.enable',
   configRevoke: 'config.revoke',
   configReassign: 'config.reassign',
+  nodeEnrollToken: 'node.enroll_token',
   nodeCreate: 'node.create',
   nodeDelete: 'node.delete',
   userCreate: 'user.create',
