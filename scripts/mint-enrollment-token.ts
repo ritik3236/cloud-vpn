@@ -8,7 +8,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 async function main() {
-  process.loadEnvFile('.env.local');
+  // Only when nothing is set already, so the same script can be pointed at production.
+  if (!process.env.DATABASE_URL) process.loadEnvFile('.env.local');
   const { db } = await import('../src/server/db');
 
   const [name, region, provider, cidrPool, dns] = process.argv.slice(2);

@@ -25,7 +25,8 @@ async function main() {
   // the top (a top-level await would make this module async, which tsx cannot require). The
   // react-server condition, set in the package script, is what lets 'server-only' resolve
   // outside Next — see ~/dev-notes/prisma-7-external-tables-neon-auth.md.
-  process.loadEnvFile('.env.local');
+  // Only when nothing is set already, so the same script can be pointed at production.
+  if (!process.env.DATABASE_URL) process.loadEnvFile('.env.local');
   const { db } = await import('../src/server/db');
   const { allocateIp, poolRange } = await import('../src/server/ipam');
   const { generateKeypair, peerAllowedIp, renderClientConfig } = await import('../src/server/wireguard');

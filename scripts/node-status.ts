@@ -5,7 +5,8 @@
  *   pnpm node:status
  */
 async function main() {
-  process.loadEnvFile('.env.local');
+  // Only when nothing is set already, so the same script can be pointed at production.
+  if (!process.env.DATABASE_URL) process.loadEnvFile('.env.local');
   const { db } = await import('../src/server/db');
   const { decrypt } = await import('../src/server/crypto');
   const { api } = await import('../src/api');
