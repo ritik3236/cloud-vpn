@@ -47,6 +47,10 @@ async function main() {
   check('rejects a bad pool', (() => { try { poolRange('10.8.0.0/31'); return false; } catch { return true; } })());
 
   // 3. Allocation order against the real schema, rolled back so nothing persists.
+  //    Counted before and after rather than assumed empty — this suite runs against a real
+  //    database that now has nodes in it.
+  const nodesBefore = await db.node.count();
+  const allocsBefore = await db.ipAllocation.count();
   const allocated: string[] = [];
   await db.$transaction(async (tx) => {
     const node = await tx.node.create({
@@ -68,7 +72,11 @@ async function main() {
   }).catch((e: Error) => { if (e.message !== 'ROLLBACK') throw e; });
 
   check('allocates lowest free addresses in order', allocated.join(',') === '10.8.0.2,10.8.0.3,10.8.0.4', `got ${allocated.join(',')}`);
-  check('nothing persisted', (await db.node.count()) === 0);
+  check(
+    'nothing persisted',
+    (await db.node.count()) === nodesBefore && (await db.ipAllocation.count()) === allocsBefore,
+    `nodes ${nodesBefore} → ${await db.node.count()}`,
+  );
 
   // 4. The two AllowedIPs must differ: client routes everything, node routes one address.
   const conf = renderClientConfig({
