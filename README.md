@@ -55,6 +55,16 @@ Copy `.env.example` to `.env.local` and fill it in. Two things that will bite:
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
 ```
 
+## Checks
+
+```bash
+pnpm check:primitives
+```
+
+Exercises the parts of the config lifecycle that run without a node agent or a Clerk session:
+WireGuard key generation (including that the public key really derives from the private one),
+pool arithmetic, and IP allocation order against the real schema in a rolled-back transaction.
+
 ## Migrations
 
 Never against the production branch — create a Neon dev branch first. Additive migrations are
