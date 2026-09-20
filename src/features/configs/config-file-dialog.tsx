@@ -37,7 +37,8 @@ export function ConfigFileDialog({
     anchor.href = url;
     anchor.download = result.filename;
     anchor.click();
-    URL.revokeObjectURL(url);
+    // Deferred: revoking in the same tick can beat the browser starting the download.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success(`${result.filename} downloaded.`);
   };
 
