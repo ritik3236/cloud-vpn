@@ -196,11 +196,18 @@ A minimal authenticated HTTP(S) service on each node. The control plane is the o
 | Endpoint | Purpose |
 |---|---|
 | `POST /peers` `{pubkey, allowed_ip}` | add a peer (`wg set`) |
-| `DELETE /peers/{pubkey}` | remove a peer |
+| `DELETE /peers/{pubkey}` | remove a peer (pubkey **base64url**, see below) |
 | `GET /peers` | list peers + last-handshake / transfer (for status) |
 | `GET /health` | liveness + node pubkey + wg status |
 
-- **Auth:** bearer token per node (stored in the DB, per node). mTLS optional hardening later.
+- **Key encoding:** a WireGuard key is base64 and contains `/` and `+`, so in the `DELETE` path
+  it travels **base64url** (unpadded) — percent-encoding would make correctness depend on how the
+  agent's router handles `%2F`. In JSON bodies it is plain base64. The agent accepts either.
+- **Auth:** bearer token per node (stored in the DB, per node), required on **every** endpoint
+  including `/health`, which would otherwise leak the node's public key. mTLS optional later.
+- **Implementation:** the agent talks to the kernel over **netlink** (`wgctrl`), never by shelling
+  out to `wg` — there is no code path that can be command-injected, and handshake/transfer
+  counters come back directly.
 - **Least privilege:** the agent only manages peers; it does not accept arbitrary commands.
 - **Idempotent:** re-adding an existing peer is a no-op; removing a missing one succeeds.
 - **Reachability:** control plane → agent over the node's public IP + agent port (TLS). Nodes

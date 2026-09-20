@@ -18,10 +18,17 @@ export const addPeer = defineAgentEndpoint({
   response: z.object({ ok: z.literal(true) }),
 });
 
+/**
+ * WireGuard keys are base64, so they contain `/` and `+`. Percent-encoding one into a path
+ * segment makes correctness depend on how the agent's router treats `%2F` — so the key travels
+ * base64url instead, which needs no escaping at all. The agent accepts both.
+ */
+const toBase64Url = (key: string) => key.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
 /** Idempotent per SPEC §7 — removing a peer that is already gone succeeds. */
 export const removePeer = defineAgentEndpoint({
   method: 'DELETE',
-  path: (input) => `/peers/${encodeURIComponent(input.pubkey)}`,
+  path: (input) => `/peers/${toBase64Url(input.pubkey)}`,
   request: z.object({ pubkey: z.string().min(1) }),
   response: z.object({ ok: z.literal(true) }),
 });
