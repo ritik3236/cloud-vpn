@@ -3,7 +3,12 @@ services:
     # Both on purpose: `docker compose pull` fetches the image CI built, while
     # `docker compose up -d --build` still works on a box with no registry access.
     image: ghcr.io/ritik3236/cloud-vpn:latest
-    build: .
+    build:
+      context: .
+      args:
+        # Read from .env by compose's variable substitution. Inlined into the bundle, so the
+        # image is tied to whichever Clerk instance it was built for.
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?set it in .env}
     restart: unless-stopped
     env_file: .env
     expose:

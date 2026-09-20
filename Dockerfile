@@ -29,8 +29,11 @@ COPY . .
 ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
 ENV DIRECT_URL=postgresql://build:build@localhost:5432/build
 RUN pnpm exec prisma generate
-# Clerk needs a publishable key at build time; the real one arrives via env at runtime.
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_build-placeholder
+# NEXT_PUBLIC_* is inlined into the bundle at build time — including into server code — so it
+# cannot be supplied at runtime however it is passed. The real key must be baked in here, which
+# is safe: a publishable key is public by design. It does make the image environment-specific.
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_placeholder
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 RUN pnpm exec next build
 
 # ---- runtime ----

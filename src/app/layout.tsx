@@ -24,10 +24,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const appearance = isAppearance(stored) ? stored : undefined;
 
   return (
-    // NEXT_PUBLIC_* values are inlined at build time, so the build's placeholder would be
-    // baked into the bundle forever. Passing the key explicitly makes it a runtime value read
-    // from the server env, which is what lets one image serve any environment.
-    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider>
       <html
         lang="en"
         data-appearance={appearance}
