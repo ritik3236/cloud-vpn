@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { errorMessage } from '@/features/error-message';
 import type { ActionResult } from '@/features/nodes/actions';
 import { db } from '@/server/db';
+import { uploadExternalConfig } from '@/server/external';
 import {
   assignConfig,
   disableConfig,
@@ -33,6 +34,24 @@ export async function generateConfigAction(
       deviceLabel: label || undefined,
     });
     return done(`Spare ${config.assignedIp} is ready to assign.`);
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function uploadExternalConfigAction(
+  _previous: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  try {
+    const { source, endpoint } = await uploadExternalConfig({
+      sourceName: String(formData.get('sourceName') ?? ''),
+      conf: String(formData.get('conf') ?? ''),
+      deviceLabel: String(formData.get('deviceLabel') ?? ''),
+    });
+    return done(
+      `${source.name} config stored${endpoint ? ` (${endpoint})` : ''}. Assign it when someone needs it.`,
+    );
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }
