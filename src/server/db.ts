@@ -18,6 +18,18 @@ function createClient() {
   });
 }
 
-export const db = globalForPrisma.prisma ?? createClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+/**
+ * Constructed on first query, not at import. `next build` loads these modules while compiling
+ * routes, and building a connection pool then would mean the image could only be built with a
+ * reachable database — a build-time dependency on production infrastructure.
+ */
+export const db = new Proxy({} as PrismaClient, {
+  get(_target, property: string | symbol) {
+    if (!globalForPrisma.prisma) {
+      const client = createClient();
+      // Reused across dev hot-reloads; in production the module is loaded once anyway.
+      globalForPrisma.prisma = client;
+    }
+    return Reflect.get(globalForPrisma.prisma, property, globalForPrisma.prisma);
+  },
+});

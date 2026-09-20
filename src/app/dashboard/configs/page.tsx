@@ -1,8 +1,5 @@
-import Link from 'next/link';
-
 import { requireRole } from '@/auth/roles';
 import { DataTable, EmptyState, PageHeader } from '@/design-system';
-import { Button } from '@/design-system/ui/button';
 import { configColumns } from '@/features/configs/columns';
 import { GenerateConfigDialog } from '@/features/configs/generate-config-dialog';
 import { UploadConfigDialog } from '@/features/configs/upload-config-dialog';
