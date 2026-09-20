@@ -69,13 +69,20 @@ export function AppearancePicker({ className }: { className?: string }) {
                   aria-pressed={active === appearance.id}
                   className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
+                  {/* Surface as the ring, accent as the centre. A hard diagonal split reads as
+                      a rendering artefact at this size — the edge aliases into a visible
+                      staircase and the two halves look like a broken shape rather than a
+                      palette. Concentric rings have no diagonal to alias. */}
                   <span
                     aria-hidden
-                    className="size-4 shrink-0 rounded-full border border-border"
-                    style={{
-                      background: `linear-gradient(135deg, ${appearance.swatch[0]} 50%, ${appearance.swatch[1]} 50%)`,
-                    }}
-                  />
+                    className="flex size-4 shrink-0 items-center justify-center rounded-full ring-1 ring-border"
+                    style={{ background: appearance.swatch[0] }}
+                  >
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ background: appearance.swatch[1] }}
+                    />
+                  </span>
                   <span className="flex-1 text-left">{appearance.name}</span>
                   {active === appearance.id ? <Check className="size-3.5" /> : null}
                 </button>
