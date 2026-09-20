@@ -88,15 +88,21 @@ Everything except **Clerk** and **Neon** is self-hosted and Dockerized.
 
 | Layer | Choice | Hosting |
 |---|---|---|
-| Control plane (UI + API) | Next.js (React, TypeScript) | self-hosted Docker (droplet) |
+| Control plane (UI + API) | Next.js (React, TypeScript) | self-hosted Docker on **AWS EC2** (`ap-southeast-1`, co-located with Neon) |
 | ORM / migrations | Prisma | — |
 | DB | Neon Postgres | cloud |
 | Auth + RBAC | Clerk | cloud |
-| Node agent | Go (single static binary, no runtime deps) | self-hosted, one per node |
+| Node agent | Go (single static binary, no runtime deps) | self-hosted, one per node — **bundled-transfer VPS, never metered-egress cloud** (§12) |
 | External vault | app + Neon (encrypted at rest) | self-hosted |
 | Container/orchestration | Docker Compose | self-hosted |
 
-Rationale: self-hosted control plane matches the org's privacy posture and holds the crown-jewel secrets; Clerk+Neon are the two deliberate cloud dependencies for speed. Go agent = drop-on-any-VPS with zero deps.
+Rationale: self-hosted control plane matches the org's privacy posture and holds the crown-jewel
+secrets; Clerk+Neon are the two deliberate cloud dependencies for speed. Go agent =
+drop-on-any-VPS with zero deps.
+
+The control plane sits on EC2 in the same region as the Neon project, which keeps DB latency
+around 1 ms and opens the option of PrivateLink so database traffic never crosses the public
+internet. Nodes deliberately do **not** live on the same class of host — see §12.
 
 ---
 
@@ -301,6 +307,10 @@ No per-node dashboard, no per-domain login — that friction is gone.
 - **One WireGuard key per device** — same key on two devices flaps; per-device configs (§5).
 - **LXC sysctl trap** — `src_valid_mark` / `ip_forward` may be blocked on container VPS;
   KVM is safe, LXC needs verifying before use as a node (§9).
+- **Nodes must not run on metered-egress cloud.** Full-tunnel (§5) means a node carries *all*
+  of a user's traffic, and AWS/GCP egress at ~$0.09/GB makes that ruinous — one heavy user can
+  outcost the server. Nodes want bundled-terabyte VPS. The control plane is the opposite case:
+  dashboards, API calls and KB-sized `.conf` downloads only, so EC2 is fine there.
 - **Full-tunnel routing on a box that also serves inbound** — split routes (`0.0.0.0/1`
   + `128.0.0.0/1`) avoid the fwmark sysctl issue if `wg-quick` ever runs on a restricted host.
 
