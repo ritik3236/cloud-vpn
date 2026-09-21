@@ -137,7 +137,10 @@ export default async function PreviewPage() {
                 action={
                   <div className="flex items-center gap-2">
                     <UploadConfigDialog sources={[{ id: 's1', name: 'Proton' }]} />
-                    <GenerateConfigDialog nodes={[{ id: 'n1', name: 'VPN-1', region: 'Stockholm' }]} />
+                    <GenerateConfigDialog
+                      nodes={[{ id: 'n1', name: 'VPN-1', region: 'Stockholm' }]}
+                      users={[{ id: 'u1', label: '@admin' }, { id: 'u2', label: 'Asha Menon' }]}
+                    />
                   </div>
                 } />
               <DataTable

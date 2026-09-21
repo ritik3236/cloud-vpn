@@ -402,7 +402,9 @@ Decided 2026-09-20:
   action — re-keying is revoke + issue.
 - **Generate and assign are separate steps.** An admin can mint unassigned spares on a node
   and hand them out later; the WireGuard peer is created **on assign**, not on generate, so a
-  spare is inert until it has an owner (§5).
+  spare is inert until it has an owner (§5). The generate dialog offers an optional person, but
+  that runs the same two steps in one submit — it does not fuse them. If the assign half fails,
+  the spare exists and the UI says so rather than reporting a clean failure.
 - **Key material is admin-only** — ops gets metadata plus the disable/revoke kill switch, never
   a private key (§2).
 

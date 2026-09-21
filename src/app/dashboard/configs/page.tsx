@@ -58,7 +58,7 @@ export default async function ConfigsPage() {
           canGenerate ? (
             <div className="flex items-center gap-2">
               <UploadConfigDialog sources={sources} />
-              {nodes.length > 0 ? <GenerateConfigDialog nodes={nodes} /> : null}
+              {nodes.length > 0 ? <GenerateConfigDialog nodes={nodes} users={assignable} /> : null}
             </div>
           ) : null
         }
@@ -76,7 +76,7 @@ export default async function ConfigsPage() {
             canGenerate ? (
               <div className="flex items-center gap-2">
                 <UploadConfigDialog sources={sources} />
-                {nodes.length > 0 ? <GenerateConfigDialog nodes={nodes} /> : null}
+                {nodes.length > 0 ? <GenerateConfigDialog nodes={nodes} users={assignable} /> : null}
               </div>
             ) : null
           }

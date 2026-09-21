@@ -22,17 +22,31 @@ const done = (message: string): ActionResult => {
   return { ok: true, message };
 };
 
-export async function generateConfigAction(
-  _previous: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
+export async function generateConfigAction(input: {
+  nodeId: string;
+  deviceLabel?: string;
+  /** Assigning here is the same two steps as doing it later — the peer is created on assign. */
+  userId?: string;
+}): Promise<ActionResult> {
   try {
-    const label = String(formData.get('deviceLabel') ?? '').trim();
     const config = await generateConfig({
-      nodeId: String(formData.get('nodeId') ?? ''),
-      deviceLabel: label || undefined,
+      nodeId: input.nodeId,
+      deviceLabel: input.deviceLabel?.trim() || undefined,
     });
-    return done(`Spare ${config.assignedIp} is ready to assign.`);
+
+    if (!input.userId) return done(`Spare ${config.assignedIp} is ready to assign.`);
+
+    try {
+      await assignConfig({ configId: config.id, userId: input.userId });
+    } catch (error) {
+      // The spare exists whatever happens next, so this must not read as "nothing happened".
+      return {
+        ok: false,
+        error: `Generated ${config.assignedIp}, but assigning it failed: ${errorMessage(error)} It is waiting in the list as a spare.`,
+      };
+    }
+
+    return done(`${config.assignedIp} is live.`);
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }
