@@ -45,7 +45,7 @@ export default async function MePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">
-          {user.name ? `Hi ${user.name.split(' ')[0]}` : 'Your connections'}
+          {user.name ? `Hi ${user.name.split(' ')[0]}` : user.username ? `Hi ${user.username}` : 'Your connections'}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {configs.length === 0

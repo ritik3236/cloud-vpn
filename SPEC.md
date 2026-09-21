@@ -21,7 +21,8 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
   belonging to someone else returns the same error as one that does not exist — so ids cannot be
   probed. Self-retrieval is audited exactly like an admin's, because it is equally a delivery.
 - Role-based staff: **admin** (full), **ops** (read + disable/revoke, no create, no key access).
-- Scale target: **~1000 users**, single organization, onboarded by staff (no public signup).
+- Scale target: **~1000 users**, single organization. An admin creates each person **in Clerk**
+  (username + password, no role); sign-up is Restricted, so nobody self-registers.
 
 **Non-goals (for now)**
 - Public self-signup / billing (users are managed by hand).
@@ -42,7 +43,7 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
 | Disable / re-enable a config (kill switch) | ✅ | ✅ | ❌ |
 | Revoke a config permanently | ✅ | ✅ | ❌ |
 | Reassign a config to another user | ✅ | ❌ | ❌ |
-| Onboard / remove users | ✅ | ❌ | ❌ |
+| Onboard / remove users (in Clerk) | ✅ | ❌ | ❌ |
 | Upload external (Proton) configs | ✅ | ❌ | ❌ |
 | Add / remove nodes | ✅ | ❌ | ❌ |
 | Download own config / QR | — | — | ✅ |
@@ -55,7 +56,8 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
 - **user** = own dashboard only.
 - A separate **superadmin** tier is optional; with 2 admins it's not needed at launch (Open Q).
 
-Roles are carried in Clerk (org roles / public metadata) and enforced server-side on every API call — never trust the client.
+Roles live in Clerk `publicMetadata.roles` and are enforced server-side on every API call — never
+trust the client. **No role means a plain user**, which is what an admin creates by default.
 
 ---
 
@@ -235,7 +237,11 @@ A minimal authenticated HTTP(S) service on each node. The control plane is the o
 
 ## 8. Data model (core tables)
 
-- **users** — id, name, email (Clerk-linked), status(active/suspended), created_at
+- **users** — id, clerk_id, username, name, email, status(active/suspended), created_at.
+  A **mirror of Clerk**, not a second register of people: rows are created and updated by the
+  sync (§13), and the only column this app decides is `status`. Everything else — who exists,
+  what they are called, whether they may sign in — belongs to Clerk. `clerk_id` is nullable
+  only because rows predating the mirror still hold configs; they show as *Not in Clerk*.
 - **staff** — id, clerk_id, role(admin|ops), created_at  *(or role held entirely in Clerk metadata)*
 - **nodes** — id, name, region, provider, endpoint(host:port), node_pubkey, cidr_pool, dns,
   agent_url, agent_token(encrypted), status, driver=`managed`
@@ -401,14 +407,25 @@ Decided 2026-09-20:
   a private key (§2).
 
 Decided 2026-09-21:
-- **A user is linked to their Clerk identity by verified email.** Staff add someone by address;
-  the first time that person signs in, the control plane matches their *verified* primary email
-  and records the Clerk id. This only holds because Clerk verifies the address — matching an
-  unverified one would let anyone claim another person's configs at sign-up. A row already
-  claimed by a different Clerk account is never re-pointed.
+- **Clerk is the single register of people; this app only mirrors it.** An admin creates someone
+  in the Clerk dashboard with a username and password and no role, and that person can sign in
+  immediately — there are no invitations, and the control plane can neither create nor rename a
+  person. Identity is the **Clerk id**, never an email: most users are username-only and have no
+  address to match on. The dashboard syncs on read (list Clerk, write only rows that changed) so
+  the mirror exists purely to give configs something to point at.
+- **Suspend is a Clerk ban plus a kill switch.** Suspending bans them in Clerk — signed out
+  everywhere, sign-in refused — *and* disables every live tunnel, because a suspended user whose
+  VPN still works is not suspended. Reactivate lifts the ban but deliberately leaves tunnels off,
+  so nobody silently regains every tunnel they ever had.
+- **A ban or delete made inside Clerk stops sign-in only.** Clerk cannot reach the nodes, so those
+  tunnels keep running until someone acts here. The users list mirrors the ban, shows the live
+  count against it, and offers *Stop live tunnels* as the one-click finish. Closing that gap
+  automatically needs a Clerk webhook (open).
 
 Still to decide:
 - Control-plane domain (highbytestech.com subdomain? new domain?).
+- A Clerk webhook (`user.created` / `user.banned` / `user.deleted`) so the mirror updates without
+  a page load and a ban made in Clerk drops tunnels by itself.
 
 ---
 

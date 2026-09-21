@@ -1,6 +1,6 @@
 'use client';
 
-import { MoreHorizontal, UserCheck, UserMinus } from 'lucide-react';
+import { MoreHorizontal, Unplug, UserCheck, UserMinus } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 
@@ -27,7 +27,7 @@ import { reactivateUserAction, suspendUserAction } from './actions';
 export function UserRowActions({
   user,
 }: {
-  user: { id: string; label: string; status: string; liveConfigs: number };
+  user: { id: string; label: string; status: string; liveConfigs: number; inClerk: boolean };
 }) {
   const [pending, startTransition] = React.useTransition();
   const [confirming, setConfirming] = React.useState(false);
@@ -39,6 +39,22 @@ export function UserRowActions({
       else toast.error(result.error);
     });
 
+  const active = user.status === 'active';
+  /**
+   * Blocking sign-in and stopping tunnels are two halves of the same action, and the first half
+   * can already be done — banned in Clerk directly, or no Clerk account at all. Then the tunnels
+   * are the only thing left to cut, and saying "suspend" would describe work already finished.
+   */
+  const tunnelsOnly = user.liveConfigs > 0 && (!active || !user.inClerk);
+  const canSuspend = tunnelsOnly || (active && user.inClerk);
+  const canReactivate = !active && user.inClerk;
+  if (!canSuspend && !canReactivate) return null;
+
+  const stop = () => {
+    setConfirming(false);
+    run(() => suspendUserAction(user.id));
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -48,7 +64,7 @@ export function UserRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          {user.status === 'active' ? (
+          {canSuspend ? (
             <DropdownMenuItem
               variant="destructive"
               disabled={pending}
@@ -57,41 +73,46 @@ export function UserRowActions({
                 setConfirming(true);
               }}
             >
-              <UserMinus className="size-4" />
-              Suspend access
+              {tunnelsOnly ? <Unplug className="size-4" /> : <UserMinus className="size-4" />}
+              {tunnelsOnly ? 'Stop live tunnels' : 'Suspend access'}
             </DropdownMenuItem>
-          ) : (
+          ) : null}
+          {canReactivate ? (
             <DropdownMenuItem disabled={pending} onSelect={() => run(() => reactivateUserAction(user.id))}>
               <UserCheck className="size-4" />
               Reactivate
             </DropdownMenuItem>
-          )}
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Suspend {user.label}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {tunnelsOnly ? `Stop ${user.label}'s tunnels?` : `Suspend ${user.label}?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {user.liveConfigs > 0
-                ? `This stops ${pluralise(user.liveConfigs, 'live tunnel')} immediately. The configs are disabled, not revoked, so you can re-enable them individually later.`
-                : 'They hold no live tunnels, so nothing disconnects. They keep their configs but cannot be assigned new ones.'}
+              {tunnelsOnly
+                ? `${user.inClerk ? 'They are already blocked from signing in' : 'They have no Clerk account, so they cannot sign in'}, but ${pluralise(user.liveConfigs, 'tunnel')} still connects. This disables the configs rather than revoking them, so you can re-enable them later.`
+                : user.liveConfigs > 0
+                  ? `This bans them in Clerk — signed out everywhere, no sign-in — and stops ${pluralise(user.liveConfigs, 'live tunnel')} immediately. The configs are disabled, not revoked, so you can re-enable them individually later.`
+                  : 'This bans them in Clerk — signed out everywhere, no sign-in. They hold no live tunnels, so nothing disconnects.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8">Keep access</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="h-8"
-              onClick={() => {
-                setConfirming(false);
-                run(() => suspendUserAction(user.id));
-              }}
-            >
-              <UserMinus className="size-4" />
-              {pending ? 'Suspending…' : `Suspend ${user.label}`}
+            <AlertDialogCancel className="h-8">
+              {tunnelsOnly ? 'Leave them connected' : 'Keep access'}
+            </AlertDialogCancel>
+            <Button variant="destructive" size="sm" className="h-8" onClick={stop}>
+              {tunnelsOnly ? <Unplug className="size-4" /> : <UserMinus className="size-4" />}
+              {pending
+                ? tunnelsOnly
+                  ? 'Stopping…'
+                  : 'Suspending…'
+                : tunnelsOnly
+                  ? 'Stop Tunnels'
+                  : `Suspend ${user.label}`}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

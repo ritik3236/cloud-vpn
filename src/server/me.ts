@@ -5,6 +5,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { AUDIT_ACTIONS, recordAudit } from '@/server/audit';
 import { decrypt } from '@/server/crypto';
 import { db } from '@/server/db';
+import { mirrorClerkUser } from '@/server/users';
 import { renderClientConfig } from '@/server/wireguard';
 
 export class NotAMemberError extends Error {
@@ -29,12 +30,9 @@ export class ConfigUnavailableError extends Error {
 }
 
 /**
- * Links a signed-in Clerk identity to a user row. Staff add people by email (SPEC §1 rules out
- * self-signup), so the first visit is matched on the verified primary email and the Clerk id is
- * recorded for later visits.
- *
- * This is only safe because Clerk verifies the address — matching on an unverified email would
- * let anyone claim someone else's configs by typing their address at sign-up.
+ * The signed-in person's mirror row, keyed by Clerk id. Clerk is the source of truth and sign-up
+ * is restricted, so anyone who can sign in was created by an admin — the first visit simply
+ * mirrors them. Nothing is matched on email, so there is no address to spoof.
  */
 export async function resolveCurrentUser() {
   const { userId } = await auth();
@@ -44,17 +42,7 @@ export async function resolveCurrentUser() {
   if (linked) return linked;
 
   const clerk = await currentUser();
-  const verified = clerk?.emailAddresses.find(
-    (address) => address.id === clerk.primaryEmailAddressId && address.verification?.status === 'verified',
-  );
-  const email = verified?.emailAddress?.toLowerCase();
-  if (!email) return null;
-
-  const match = await db.user.findUnique({ where: { email } });
-  // Already claimed by a different Clerk account — never re-point it.
-  if (!match || (match.clerkId && match.clerkId !== userId)) return null;
-
-  return db.user.update({ where: { id: match.id }, data: { clerkId: userId } });
+  return clerk ? mirrorClerkUser(clerk) : null;
 }
 
 /** Everything the signed-in person is allowed to see: their own configs, and nothing else. */

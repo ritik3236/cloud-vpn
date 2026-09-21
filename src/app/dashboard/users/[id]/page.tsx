@@ -12,12 +12,16 @@ import {
   StatusPill,
   type Column,
 } from '@/design-system';
+import { Badge } from '@/design-system/ui/badge';
 import { Button } from '@/design-system/ui/button';
 import { ConfigRowActions } from '@/features/configs/row-actions';
+import { presenceLookup } from '@/features/users/presence';
 import { UserRowActions } from '@/features/users/row-actions';
 import { formatBytes, formatDate, formatDateTime, formatNumber, relativeTime, truncateId } from '@/lib/format';
+import { personLabel, roleLabel } from '@/lib/person';
 import { db } from '@/server/db';
 import { usageByConfig, type ConfigUsage } from '@/server/usage';
+import { syncUsersFromClerk } from '@/server/users';
 
 type Row = {
   id: string;
@@ -157,7 +161,27 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   });
   if (!user) notFound();
 
-  const label = user.name ?? user.email;
+  const label = personLabel(user);
+
+  const presence = presenceLookup(await syncUsersFromClerk())(user.clerkId);
+  const person = presence.kind === 'present' ? presence.person : null;
+  const missingFromClerk = presence.kind === 'missing';
+  const staffRole = roleLabel(person?.role ?? null);
+  const identity = [
+    user.username && label !== `@${user.username}` ? `@${user.username}` : null,
+    user.email && label !== user.email ? user.email : null,
+    missingFromClerk
+      ? 'no Clerk account, so they cannot sign in'
+      : person
+        ? person.lastSignInAt
+          ? `last signed in ${relativeTime(person.lastSignInAt)}`
+          : 'never signed in'
+        : null,
+    `added ${formatDate(user.createdAt)}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   const usage = await usageByConfig(user.configs);
   const reachableNodes = new Set([...usage.keys()]);
 
@@ -185,17 +209,24 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <h1 className="truncate text-xl font-semibold tracking-tight">{label}</h1>
-            <StatusPill tone={user.status === 'active' ? 'live' : 'paused'}>
-              {user.status === 'active' ? 'Active' : 'Suspended'}
-            </StatusPill>
+            {missingFromClerk ? (
+              <StatusPill tone="dead">Not in Clerk</StatusPill>
+            ) : (
+              <StatusPill tone={user.status === 'active' ? 'live' : 'paused'}>
+                {user.status === 'active' ? 'Active' : 'Suspended'}
+              </StatusPill>
+            )}
+            {staffRole ? (
+              <Badge variant="outline" className="h-5 px-1.5 text-[11px] text-muted-foreground">
+                {staffRole}
+              </Badge>
+            ) : null}
           </div>
-          <p className="mt-1 truncate text-sm text-muted-foreground">
-            {user.email} · added {formatDate(user.createdAt)}
-          </p>
+          <p className="mt-1 truncate text-sm text-muted-foreground">{identity}</p>
         </div>
         {role === 'admin' ? (
           <UserRowActions
-            user={{ id: user.id, label, status: user.status, liveConfigs: live }}
+            user={{ id: user.id, label, status: user.status, liveConfigs: live, inClerk: !missingFromClerk }}
           />
         ) : null}
       </header>

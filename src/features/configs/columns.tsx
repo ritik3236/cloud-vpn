@@ -6,6 +6,7 @@ import {
   type Column,
 } from '@/design-system';
 import { formatDateTime, relativeTime, truncateId } from '@/lib/format';
+import { personLabel } from '@/lib/person';
 
 import { ConfigRowActions, type AssignableUser } from './row-actions';
 
@@ -19,10 +20,10 @@ export type ConfigRow = {
   sourceType: string;
   node: { name: string; region: string; endpoint: string } | null;
   externalSource: { name: string } | null;
-  user: { name: string | null; email: string } | null;
+  user: { name: string | null; username: string | null; email: string | null } | null;
 };
 
-const holderOf = (config: ConfigRow) => config.user?.name ?? config.user?.email ?? null;
+const holderOf = (config: ConfigRow) => (config.user ? personLabel(config.user) : null);
 
 /** Columns are a function of the assignable users, so the row menu can offer them. */
 export const configColumns = (

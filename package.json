@@ -10,6 +10,7 @@
     "check:primitives": "NODE_OPTIONS=--conditions=react-server tsx scripts/check-lifecycle-primitives.ts",
     "probe:node": "NODE_OPTIONS=--conditions=react-server tsx scripts/probe-node.ts",
     "mint:token": "NODE_OPTIONS=--conditions=react-server tsx scripts/mint-enrollment-token.ts",
+    "check:users": "NODE_OPTIONS=--conditions=react-server tsx scripts/check-user-mirror.ts",
     "node:status": "NODE_OPTIONS=--conditions=react-server tsx scripts/node-status.ts"
   },
   "dependencies": {

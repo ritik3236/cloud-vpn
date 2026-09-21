@@ -4,35 +4,44 @@ import { configColumns } from '@/features/configs/columns';
 import { GenerateConfigDialog } from '@/features/configs/generate-config-dialog';
 import { UploadConfigDialog } from '@/features/configs/upload-config-dialog';
 import { pluralise } from '@/lib/format';
+import { personLabel } from '@/lib/person';
 import { db } from '@/server/db';
 import { listExternalSources } from '@/server/external';
+import { syncUsersFromClerk } from '@/server/users';
 
 export default async function ConfigsPage() {
   const { role } = await requireRole('admin', 'ops');
   const canGenerate = role === 'admin';
 
-  const [configs, nodes, sources, people] = await Promise.all([
+  const [clerkPeople, configs, nodes, sources] = await Promise.all([
+    syncUsersFromClerk(),
     db.config.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: {
         node: { select: { name: true, region: true, endpoint: true } },
         externalSource: { select: { name: true } },
-        user: { select: { name: true, email: true } },
+        user: { select: { name: true, username: true, email: true } },
       },
     }),
     db.node.findMany({ where: { status: 'active' }, select: { id: true, name: true, region: true } }),
-    // Only active people can receive a config — suspending someone is meant to stop access,
-    // so it must not be possible to hand them a fresh tunnel.
     listExternalSources(),
-    db.user.findMany({
-      where: { status: 'active' },
-      select: { id: true, name: true, email: true },
-      orderBy: [{ name: 'asc' }, { email: 'asc' }],
-    }),
   ]);
 
-  const assignable = people.map((person) => ({ id: person.id, label: person.name ?? person.email }));
+  // Only active people who exist in Clerk can receive a config: suspending someone is meant to
+  // stop access, and a row with no Clerk account behind it is nobody who can sign in and use one.
+  // If Clerk is unreachable we fall back to every linked row rather than emptying the list.
+  const people = await db.user.findMany({
+    where: {
+      status: 'active',
+      clerkId: clerkPeople ? { in: clerkPeople.map((person) => person.clerkId) } : { not: null },
+    },
+    select: { id: true, name: true, username: true, email: true },
+  });
+
+  const assignable = people
+    .map((person) => ({ id: person.id, label: personLabel(person) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const live = configs.filter((config) => config.status === 'active').length;
 

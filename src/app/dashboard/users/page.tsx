@@ -1,125 +1,87 @@
-import Link from 'next/link';
-
 import { requireRole } from '@/auth/roles';
-import { Copyable, DataTable, EmptyState, PageHeader, StatusPill, type Column } from '@/design-system';
-import { AddUserDialog } from '@/features/users/add-user-dialog';
-import { UserRowActions } from '@/features/users/row-actions';
-import { formatDateTime, formatNumber, pluralise, relativeTime } from '@/lib/format';
+import { DataTable, EmptyState, PageHeader } from '@/design-system';
+import { userColumns, type UserRow } from '@/features/users/columns';
+import { CreateInClerkButton } from '@/features/users/create-in-clerk-button';
+import { presenceLookup } from '@/features/users/presence';
+import { RefreshOnFocus } from '@/features/users/refresh-on-focus';
+import { pluralise } from '@/lib/format';
+import { personLabel } from '@/lib/person';
 import { db } from '@/server/db';
+import { syncUsersFromClerk } from '@/server/users';
 
-type UserRow = {
-  id: string;
-  name: string | null;
-  email: string;
-  status: string;
-  createdAt: Date;
-  configs: { status: string }[];
-};
-
-const labelOf = (user: UserRow) => user.name ?? user.email;
-const liveCount = (user: UserRow) => user.configs.filter((c) => c.status === 'active').length;
-
-const columns = (canManage: boolean): Column<UserRow>[] => [
-  {
-    key: 'person',
-    header: 'Person',
-    cell: (user) => (
-      <div className="min-w-0">
-        {/* The name is the link, not the row — the row also carries an actions menu, and a
-            button inside a link is not a thing. */}
-        <Link
-          href={`/dashboard/users/${user.id}`}
-          className="truncate text-sm font-medium hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          {labelOf(user)}
-        </Link>
-        {user.name ? <div className="truncate text-xs text-muted-foreground">{user.email}</div> : null}
-      </div>
-    ),
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    cell: (user) => (
-      <StatusPill tone={user.status === 'active' ? 'live' : 'paused'}>
-        {user.status === 'active' ? 'Active' : 'Suspended'}
-      </StatusPill>
-    ),
-  },
-  { key: 'email', header: 'Email', cell: (user) => <Copyable value={user.email} label="email" mono={false} /> },
-  {
-    key: 'live',
-    header: 'Live tunnels',
-    numeric: true,
-    cell: (user) => <span className="text-sm">{formatNumber(liveCount(user))}</span>,
-  },
-  {
-    key: 'configs',
-    header: 'Configs',
-    numeric: true,
-    cell: (user) => <span className="text-sm">{formatNumber(user.configs.length)}</span>,
-  },
-  {
-    key: 'joined',
-    header: 'Added',
-    cell: (user) => (
-      <span className="text-xs text-muted-foreground" title={formatDateTime(user.createdAt)}>
-        {relativeTime(user.createdAt)}
-      </span>
-    ),
-  },
-  {
-    key: 'actions',
-    header: '',
-    headClassName: 'w-10',
-    cell: (user) =>
-      canManage ? (
-        <div className="flex justify-end">
-          <UserRowActions
-            user={{
-              id: user.id,
-              label: labelOf(user),
-              status: user.status,
-              liveConfigs: liveCount(user),
-            }}
-          />
-        </div>
-      ) : null,
-  },
-];
+const TAKE = 50;
 
 export default async function UsersPage() {
   const { role } = await requireRole('admin', 'ops');
   const canManage = role === 'admin';
 
+  // Sync first: the list below is Clerk's, and a person created there a moment ago should be in
+  // it. Forced, because this is the page whose whole job is to show who exists.
+  const people = await syncUsersFromClerk({ force: true });
+  const presenceOf = presenceLookup(people);
+
   const users = await db.user.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 50,
+    take: TAKE,
     include: { configs: { select: { status: true } } },
   });
 
-  const active = users.filter((user) => user.status === 'active').length;
+  const rows: UserRow[] = users.map((user) => {
+    const label = personLabel(user);
+    return {
+      id: user.id,
+      label,
+      secondary:
+        [user.username ? `@${user.username}` : null, user.email]
+          .filter((part): part is string => Boolean(part) && part !== label)
+          .join(' · ') || null,
+      status: user.status,
+      live: user.configs.filter((config) => config.status === 'active').length,
+      configs: user.configs.length,
+      presence: presenceOf(user.clerkId),
+    };
+  });
+
+  const missing = rows.filter((row) => row.presence.kind === 'missing').length;
+  const description = people
+    ? `${pluralise(people.length, 'person', 'people')} in Clerk, ${people.filter((person) => !person.banned).length} active` +
+      `${missing ? `, ${missing} not in Clerk` : ''}.` +
+      `${users.length === TAKE ? ` Showing the ${TAKE} most recent.` : ''}`
+    : 'People who sign in and hold configs.';
 
   return (
     <div className="space-y-5">
+      <RefreshOnFocus />
       <PageHeader
         title="Users"
-        description={
-          users.length
-            ? `${pluralise(users.length, 'person', 'people')}, ${active} active.`
-            : 'People who hold configs.'
-        }
-        action={canManage ? <AddUserDialog /> : null}
+        description={description}
+        action={canManage ? <CreateInClerkButton /> : null}
       />
 
-      {users.length === 0 ? (
+      {people ? null : (
+        <p
+          role="alert"
+          className="rounded-lg bg-tone-paused-bg px-3 py-2 text-xs text-tone-paused"
+        >
+          Could not reach Clerk, so roles and sign-ins are missing. This is the list as last synced.
+        </p>
+      )}
+
+      {rows.length === 0 ? (
         <EmptyState
-          title="No users yet"
-          hint="Staff add users here — there is no public signup. Configs can be generated without a user, but they stay spare until someone exists to hold them."
-          action={canManage ? <AddUserDialog /> : null}
+          title="No one here yet"
+          hint="People come from Clerk. Create one there with a username and password and no role — a role would make them staff. They show up here as soon as they exist."
+          action={canManage ? <CreateInClerkButton /> : null}
         />
       ) : (
-        <DataTable columns={columns(canManage)} rows={users} rowKey={(user) => user.id} />
+        <>
+          <DataTable columns={userColumns(canManage)} rows={rows} rowKey={(user) => user.id} />
+          <p className="text-xs text-muted-foreground">
+            Clerk is the register of people; this list mirrors it. Suspending someone here bans
+            them in Clerk and switches their tunnels off. A ban made in Clerk itself stops sign-in
+            only — their tunnels keep running until you stop them here.
+          </p>
+        </>
       )}
     </div>
   );

@@ -8,8 +8,9 @@ import { configColumns, type ConfigRow } from '@/features/configs/columns';
 import { GenerateConfigDialog } from '@/features/configs/generate-config-dialog';
 import { UploadConfigDialog } from '@/features/configs/upload-config-dialog';
 import { EnrollNodeDialog } from '@/features/nodes/enroll-node-dialog';
-import { AddUserDialog } from '@/features/users/add-user-dialog';
+import { CreateInClerkButton } from '@/features/users/create-in-clerk-button';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
+import { userColumns, type UserRow } from '@/features/users/columns';
 
 import { ConfigCard } from '@/features/me/config-card';
 
@@ -36,24 +37,52 @@ const configs: ConfigRow[] = [
   { id: 'c1', status: 'active', sourceType: 'managed', externalSource: null, deviceLabel: 'Phone', assignedIp: '10.8.0.5',
     pubkey: 'TID6LaHdOPlzQOtkAQP8k8zD7bQXqZgrR2EPcI2+7kI=',
     createdAt: new Date(Date.now() - 3 * 3600_000),
-    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
+    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: 'Asha Menon', username: 'asha', email: 'asha@example.com' } },
   { id: 'c2', status: 'unassigned', sourceType: 'managed', externalSource: null, deviceLabel: null, assignedIp: '10.8.0.6',
     pubkey: 'Bx9QmT4vL2nR7sK1cY5aW8eD3hJ6bU0iO2gZ4lXnPqA=',
     createdAt: new Date(Date.now() - 20 * 60_000), node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: null },
   { id: 'c3', status: 'disabled', sourceType: 'managed', externalSource: null, deviceLabel: 'Laptop', assignedIp: '10.8.0.7',
     pubkey: 'Mn2Kx7pQ9vR4sT1cL5aY8eW3hD6bJ0iU2gO4zXnPqB=',
     createdAt: new Date(Date.now() - 9 * day),
-    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: null, email: 'ravi@example.com' } },
+    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: null, username: 'ravi', email: null } },
   { id: 'c4', status: 'revoked', sourceType: 'managed', externalSource: null, deviceLabel: 'Old phone', assignedIp: null,
     pubkey: 'Zq5Wn8mK2xP7vT4sR1cL9aY6eD3hJ0bU2gI4oXnPqC=',
     createdAt: new Date(Date.now() - 88 * day),
-    node: { name: 'VPN-2', region: 'Frankfurt', endpoint: '95.216.44.7:51820' }, user: { name: 'Asha Menon', email: 'asha@example.com' } },
+    node: { name: 'VPN-2', region: 'Frankfurt', endpoint: '95.216.44.7:51820' }, user: { name: 'Asha Menon', username: 'asha', email: 'asha@example.com' } },
   {
     id: 'c5', status: 'active', sourceType: 'static',
     externalSource: { name: 'Proton' },
     deviceLabel: 'Work laptop', assignedIp: '10.2.0.2', pubkey: null,
     createdAt: new Date(Date.now() - 5 * day), node: null,
-    user: { name: 'Ravi Shah', email: 'ravi@example.com' },
+    user: { name: 'Ravi Shah', username: 'ravi', email: 'ravi@example.com' },
+  },
+];
+
+const users: UserRow[] = [
+  {
+    id: 'u1', label: '@admin', secondary: null, status: 'active', live: 1, configs: 2,
+    presence: { kind: 'present', person: {
+      clerkId: 'user_1', username: 'admin', name: null, email: null, banned: false, role: 'admin',
+      createdAt: new Date(Date.now() - 40 * day), lastSignInAt: new Date(Date.now() - 2 * 3600_000),
+    } },
+  },
+  {
+    id: 'u2', label: 'Asha Menon', secondary: '@asha · asha@example.com', status: 'active', live: 2, configs: 3,
+    presence: { kind: 'present', person: {
+      clerkId: 'user_2', username: 'asha', name: 'Asha Menon', email: 'asha@example.com', banned: false,
+      role: null, createdAt: new Date(Date.now() - 12 * day), lastSignInAt: new Date(Date.now() - 3 * day),
+    } },
+  },
+  {
+    id: 'u3', label: '@ravi', secondary: null, status: 'suspended', live: 1, configs: 1,
+    presence: { kind: 'present', person: {
+      clerkId: 'user_3', username: 'ravi', name: null, email: null, banned: true, role: null,
+      createdAt: new Date(Date.now() - 5 * day), lastSignInAt: null,
+    } },
+  },
+  {
+    id: 'u4', label: 'Priya Rao', secondary: 'priya@example.com', status: 'active', live: 0, configs: 1,
+    presence: { kind: 'missing' },
   },
 ];
 
@@ -150,20 +179,25 @@ export default async function PreviewPage() {
             <div className="space-y-5">
               <PageHeader
                 title="Users"
-                description="People who hold configs."
+                description="3 people in Clerk, 2 active."
                 action={
                   <div className="flex items-center gap-2">
                     <ConfigDialogDemo
                       result={{ ok: true, filename: 'vpn-1-phone.conf', content: sampleConf, qrSvg }}
                     />
-                    <AddUserDialog />
+                    <CreateInClerkButton />
                   </div>
                 }
               />
+              <DataTable columns={userColumns(true)} rows={users} rowKey={(user) => user.id} />
+              <p className="text-xs text-muted-foreground">
+                Clerk is the register of people; this list mirrors it. Suspending someone here bans
+                them in Clerk and switches their tunnels off.
+              </p>
               <EmptyState
-                title="No users yet"
-                hint="Staff add users here — there is no public signup."
-                action={<AddUserDialog />}
+                title="No one here yet"
+                hint="People come from Clerk. Create one there with a username and password and no role — a role would make them staff."
+                action={<CreateInClerkButton />}
               />
             </div>
           </div>

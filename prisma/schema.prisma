@@ -39,11 +39,19 @@ enum ConfigStatus {
   revoked
 }
 
+/**
+ * A mirror of a Clerk user, never an independent record. Clerk is the source of truth for who
+ * exists, their username, name, email and whether they are banned; this row exists so configs
+ * have something to reference and so history survives a user being deleted upstream.
+ */
 model User {
   id        String     @id @default(cuid())
   clerkId   String?    @unique @map("clerk_id")
+  username  String?
   name      String?
-  email     String     @unique
+  // Optional because a username-only Clerk user has none. Not unique: uniqueness is Clerk's to
+  // enforce, and a mirror that enforced it too would collide with legacy rows during a sync.
+  email     String?
   status    UserStatus @default(active)
   createdAt DateTime   @default(now()) @map("created_at")
 

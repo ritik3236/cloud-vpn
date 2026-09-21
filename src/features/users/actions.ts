@@ -5,23 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { errorMessage } from '@/features/error-message';
 import type { ActionResult } from '@/features/nodes/actions';
 import { pluralise } from '@/lib/format';
-import { createUser, reactivateUser, suspendUser } from '@/server/users';
-
-export async function addUserAction(
-  _previous: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
-  try {
-    const user = await createUser({
-      email: String(formData.get('email') ?? ''),
-      name: String(formData.get('name') ?? ''),
-    });
-    revalidatePath('/dashboard/users');
-    return { ok: true, message: `${user.name ?? user.email} can now hold configs.` };
-  } catch (error) {
-    return { ok: false, error: errorMessage(error) };
-  }
-}
+import { personLabel } from '@/lib/person';
+import { reactivateUser, suspendUser } from '@/server/users';
 
 export async function suspendUserAction(userId: string): Promise<ActionResult> {
   try {
@@ -33,15 +18,15 @@ export async function suspendUserAction(userId: string): Promise<ActionResult> {
       // Report both halves rather than claiming a clean suspension.
       return {
         ok: false,
-        error: `${result.name} is suspended, but ${pluralise(result.failed.length, 'tunnel')} could not be stopped — the node may be offline. Retry from the configs page.`,
+        error: `${result.label} is suspended, but ${pluralise(result.failed.length, 'tunnel')} could not be stopped — the node may be offline. Retry from the configs page.`,
       };
     }
     return {
       ok: true,
       message:
         result.stopped > 0
-          ? `${result.name} suspended and ${pluralise(result.stopped, 'tunnel')} stopped.`
-          : `${result.name} suspended.`,
+          ? `${result.label} suspended and ${pluralise(result.stopped, 'tunnel')} stopped.`
+          : `${result.label} suspended.`,
     };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -54,7 +39,7 @@ export async function reactivateUserAction(userId: string): Promise<ActionResult
     revalidatePath('/dashboard/users');
     return {
       ok: true,
-      message: `${user.name ?? user.email} reactivated. Their tunnels stay off until you re-enable them.`,
+      message: `${personLabel(user)} can sign in again. Their tunnels stay off until you re-enable them.`,
     };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

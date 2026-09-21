@@ -17,10 +17,18 @@ export class ForbiddenError extends Error {
   }
 }
 
+/**
+ * Shared by the session check and the user list, so the two can never disagree about who is
+ * staff. No role means a plain user — the default for everyone an admin creates (SPEC §2).
+ */
+export function roleFromMetadata(metadata: unknown): Role | null {
+  const roles = (metadata as { roles?: unknown } | null)?.roles;
+  const list = Array.isArray(roles) ? roles : [];
+  return ROLES.find((role) => list.includes(role)) ?? null;
+}
+
 function roleFrom(sessionClaims: unknown): Role | null {
-  const metadata = (sessionClaims as { metadata?: { roles?: unknown } } | null)?.metadata;
-  const roles = Array.isArray(metadata?.roles) ? metadata.roles : [];
-  return ROLES.find((r) => roles.includes(r)) ?? null;
+  return roleFromMetadata((sessionClaims as { metadata?: unknown } | null)?.metadata);
 }
 
 export async function currentRole(): Promise<Role | null> {

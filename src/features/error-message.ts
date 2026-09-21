@@ -5,7 +5,7 @@ import { PoolExhaustedError } from '@/server/ipam';
 import { InvalidNodeInput, NodeInUseError, NodePreflightError } from '@/server/nodes';
 import { InvalidExternalConfig } from '@/server/external';
 import { ConfigUnavailableError, NotAMemberError, SuspendedError } from '@/server/me';
-import { DuplicateUserError, InvalidUserInput } from '@/server/users';
+import { SelfSuspendError } from '@/server/users';
 
 /**
  * Turns a thrown error into a sentence a person can act on. Anything unrecognised becomes a
@@ -17,9 +17,8 @@ export function errorMessage(error: unknown): string {
     return `That node isn't ready: ${error.problems.join('; ')}.`;
   }
   if (error instanceof InvalidNodeInput) return error.message;
-  if (error instanceof InvalidUserInput) return error.message;
   if (error instanceof InvalidExternalConfig) return error.message;
-  if (error instanceof DuplicateUserError) return error.message;
+  if (error instanceof SelfSuspendError) return error.message;
   if (error instanceof NodeInUseError) return error.message;
   if (error instanceof ConfigStateError) return error.message;
   if (error instanceof PoolExhaustedError) {
