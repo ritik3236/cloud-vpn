@@ -48,7 +48,13 @@ stored private key, agent token and external config becomes undecryptable — th
 ## Updating
 
 Pushing to `main` runs CI (typecheck, lint, build) and, if that passes, publishes
-`ghcr.io/ritik3236/cloud-vpn:latest` and a SHA-tagged image. Then on the host:
+`ghcr.io/ritik3236/cloud-vpn:latest` and a SHA-tagged image.
+
+The image job needs the repository variable `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (Settings →
+Secrets and variables → Actions → Variables) set to the `pk_live_` key of the Clerk instance the
+image serves — it is inlined into the bundle, so one image serves exactly one Clerk instance. CI
+fails rather than publishing an image without it. A publishable key is not a secret; it ships in
+the browser bundle either way. Then on the host:
 
 ```bash
 cd /opt/cloud-vpn && docker compose pull && docker compose up -d
