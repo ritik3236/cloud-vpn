@@ -8,6 +8,9 @@ import {
 import { formatDateTime, relativeTime, truncateId } from '@/lib/format';
 import { personLabel } from '@/lib/person';
 
+import type { Connection } from '@/lib/connection';
+
+import { ConnectionLine } from './connection-line';
 import { ConfigRowActions, type AssignableUser } from './row-actions';
 
 export type ConfigRow = {
@@ -21,6 +24,8 @@ export type ConfigRow = {
   node: { name: string; region: string; endpoint: string } | null;
   externalSource: { name: string } | null;
   user: { name: string | null; username: string | null; email: string | null } | null;
+  /** Live, read from the node at render — never stored beside `status`. */
+  connection?: Connection;
 };
 
 const holderOf = (config: ConfigRow) => (config.user ? personLabel(config.user) : null);
@@ -51,9 +56,14 @@ export const configColumns = (
     key: 'status',
     header: 'Status',
     cell: (config) => (
-      <StatusPill tone={configTone(config.status)}>
-        {CONFIG_STATUS_LABEL[config.status] ?? config.status}
-      </StatusPill>
+      <div className="space-y-1">
+        <StatusPill tone={configTone(config.status)}>
+          {CONFIG_STATUS_LABEL[config.status] ?? config.status}
+        </StatusPill>
+        {config.connection ? (
+          <ConnectionLine connection={config.connection} provider={config.externalSource?.name} />
+        ) : null}
+      </div>
     ),
   },
   {

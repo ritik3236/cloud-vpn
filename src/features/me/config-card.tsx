@@ -4,8 +4,10 @@ import { Download, Globe, Server } from 'lucide-react';
 import * as React from 'react';
 
 import { CONFIG_STATUS_LABEL, configTone, StatusPill } from '@/design-system';
+import type { Connection } from '@/lib/connection';
 import { Button } from '@/design-system/ui/button';
 import { ConfigFileDialog } from '@/features/configs/config-file-dialog';
+import { ConnectionLine } from '@/features/configs/connection-line';
 import type { RetrieveResult } from '@/features/configs/actions';
 
 import { retrieveOwnConfigAction } from './actions';
@@ -18,6 +20,7 @@ export type MyConfig = {
   sourceType: string;
   node: { name: string; region: string } | null;
   externalSource: { name: string } | null;
+  connection: Connection;
 };
 
 export function ConfigCard({ config }: { config: MyConfig }) {
@@ -48,6 +51,13 @@ export function ConfigCard({ config }: { config: MyConfig }) {
               {where}
               {config.assignedIp ? ` · ${config.assignedIp}` : ''}
             </p>
+            <div className="mt-1.5">
+              <ConnectionLine
+                connection={config.connection}
+                provider={config.externalSource?.name}
+                verbose
+              />
+            </div>
           </div>
         </div>
 

@@ -2,10 +2,12 @@ import 'server-only';
 
 import { auth, currentUser } from '@clerk/nextjs/server';
 
+import { connectionOf } from '@/lib/connection';
 import { AUDIT_ACTIONS, recordAudit } from '@/server/audit';
 import { decrypt } from '@/server/crypto';
 import { db } from '@/server/db';
 import { mirrorClerkUser } from '@/server/users';
+import { usageByConfig } from '@/server/usage';
 import { renderClientConfig } from '@/server/wireguard';
 
 export class NotAMemberError extends Error {
@@ -60,12 +62,35 @@ export async function myConfigs() {
       assignedIp: true,
       createdAt: true,
       sourceType: true,
+      // For the live connection read below, not for display.
+      pubkey: true,
+      nodeId: true,
       node: { select: { name: true, region: true } },
       externalSource: { select: { name: true } },
     },
   });
 
-  return { user, configs };
+  const usage = await usageByConfig(configs);
+  return {
+    user,
+    // Listed field by field: this crosses to the browser, and `pubkey`/`nodeId` were read for the
+    // connection lookup only.
+    configs: configs.map((config) => ({
+      id: config.id,
+      status: config.status,
+      deviceLabel: config.deviceLabel,
+      assignedIp: config.assignedIp,
+      createdAt: config.createdAt,
+      sourceType: config.sourceType,
+      node: config.node,
+      externalSource: config.externalSource,
+      connection: connectionOf({
+        status: config.status,
+        sourceType: config.sourceType,
+        usage: usage.get(config.id),
+      }),
+    })),
+  };
 }
 
 /**

@@ -17,6 +17,8 @@ import { ConfigCard } from '@/features/me/config-card';
 import { ConfigDialogDemo } from './config-dialog-demo';
 
 const day = 86_400_000;
+// Module scope: a component body must stay pure.
+const nowSeconds = Math.floor(Date.now() / 1000);
 
 const nodes: NodeRow[] = [
   {
@@ -37,14 +39,17 @@ const configs: ConfigRow[] = [
   { id: 'c1', status: 'active', sourceType: 'managed', externalSource: null, deviceLabel: 'Phone', assignedIp: '10.8.0.5',
     pubkey: 'TID6LaHdOPlzQOtkAQP8k8zD7bQXqZgrR2EPcI2+7kI=',
     createdAt: new Date(Date.now() - 3 * 3600_000),
-    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: 'Asha Menon', username: 'asha', email: 'asha@example.com' } },
+    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: 'Asha Menon', username: 'asha', email: 'asha@example.com' },
+    connection: { kind: 'connected', lastHandshake: nowSeconds - 45 } },
   { id: 'c2', status: 'unassigned', sourceType: 'managed', externalSource: null, deviceLabel: null, assignedIp: '10.8.0.6',
     pubkey: 'Bx9QmT4vL2nR7sK1cY5aW8eD3hJ6bU0iO2gZ4lXnPqA=',
-    createdAt: new Date(Date.now() - 20 * 60_000), node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: null },
+    createdAt: new Date(Date.now() - 20 * 60_000), node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: null,
+    connection: { kind: 'none' } },
   { id: 'c3', status: 'disabled', sourceType: 'managed', externalSource: null, deviceLabel: 'Laptop', assignedIp: '10.8.0.7',
     pubkey: 'Mn2Kx7pQ9vR4sT1cL5aY8eW3hD6bJ0iU2gO4zXnPqB=',
     createdAt: new Date(Date.now() - 9 * day),
-    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: null, username: 'ravi', email: null } },
+    node: { name: 'VPN-1', region: 'Stockholm', endpoint: '80.78.31.19:51820' }, user: { name: null, username: 'ravi', email: null },
+    connection: { kind: 'none' } },
   { id: 'c4', status: 'revoked', sourceType: 'managed', externalSource: null, deviceLabel: 'Old phone', assignedIp: null,
     pubkey: 'Zq5Wn8mK2xP7vT4sR1cL9aY6eD3hJ0bU2gI4oXnPqC=',
     createdAt: new Date(Date.now() - 88 * day),
@@ -55,6 +60,7 @@ const configs: ConfigRow[] = [
     deviceLabel: 'Work laptop', assignedIp: '10.2.0.2', pubkey: null,
     createdAt: new Date(Date.now() - 5 * day), node: null,
     user: { name: 'Ravi Shah', username: 'ravi', email: 'ravi@example.com' },
+    connection: { kind: 'untracked' },
   },
 ];
 
@@ -161,12 +167,14 @@ export default async function PreviewPage() {
                     id: 'm1', status: 'active', deviceLabel: 'Phone', assignedIp: '10.8.0.5',
                     sourceType: 'managed', node: { name: 'VPN-1', region: 'Stockholm' },
                     externalSource: null,
+                    connection: { kind: 'connected', lastHandshake: nowSeconds - 30 },
                   }}
                 />
                 <ConfigCard
                   config={{
                     id: 'm2', status: 'active', deviceLabel: 'Work laptop', assignedIp: '10.2.0.2',
                     sourceType: 'static', node: null, externalSource: { name: 'Proton' },
+                    connection: { kind: 'untracked' },
                   }}
                 />
                 <ConfigCard
@@ -174,6 +182,7 @@ export default async function PreviewPage() {
                     id: 'm3', status: 'disabled', deviceLabel: 'Old tablet', assignedIp: '10.8.0.9',
                     sourceType: 'managed', node: { name: 'VPN-1', region: 'Stockholm' },
                     externalSource: null,
+                    connection: { kind: 'none' },
                   }}
                 />
               </div>

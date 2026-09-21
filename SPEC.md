@@ -269,6 +269,10 @@ Notes:
 - `replaced_by_id` chains a reassigned config to the fresh one issued in its place, so a
   `revoked` row with a non-null `replaced_by_id` reads as a hand-over rather than a plain
   revoke — no extra status value needed.
+- **Whether a tunnel is in use is never stored.** `status` records a decision somebody made;
+  being connected is an observation that changes minute to minute, and only the node knows it.
+  It is read live from `GET /peers` at render (§7) and derived from the last handshake, so there
+  is no cache to go stale and no fifth status value.
 
 ---
 
@@ -357,8 +361,8 @@ No per-node dashboard, no per-domain login — that friction is gone.
 - Paste/upload Proton `.conf`, encrypt, assign, surface in user dashboard
 
 **Phase 3 — polish:**
-- ops-role hardening, connection status (last handshake from agent), per-config expiry,
-  bulk onboarding, node health monitoring, backup/restore runbook
+- ops-role hardening, per-config expiry, bulk onboarding, node health monitoring,
+  backup/restore runbook
 
 ---
 
@@ -409,6 +413,12 @@ Decided 2026-09-20:
   a private key (§2).
 
 Decided 2026-09-21:
+- **"In use" is a separate axis from `status`, and unknowable for external configs.** A managed
+  peer's last handshake says whether it is carrying traffic now; an external config terminates on
+  the provider's servers and Proton has no API to ask (§6). The UI therefore states the reason
+  ("Proton reports nothing to us") instead of leaving a blank that would read as *not connected*.
+  A node that fails to answer reads as unreachable, never as idle — a guess dressed as a fact is
+  worse than an admission.
 - **Clerk is the single register of people; this app only mirrors it.** An admin creates someone
   in the Clerk dashboard with a username and password and no role, and that person can sign in
   immediately — there are no invitations, and the control plane can neither create nor rename a

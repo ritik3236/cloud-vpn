@@ -14,10 +14,12 @@ import {
 } from '@/design-system';
 import { Badge } from '@/design-system/ui/badge';
 import { Button } from '@/design-system/ui/button';
+import { ConnectionLine } from '@/features/configs/connection-line';
 import { ConfigRowActions } from '@/features/configs/row-actions';
 import { presenceLookup } from '@/features/users/presence';
 import { UserRowActions } from '@/features/users/row-actions';
-import { formatBytes, formatDate, formatDateTime, formatNumber, relativeTime, truncateId } from '@/lib/format';
+import { formatBytes, formatDate, formatNumber, relativeTime, truncateId } from '@/lib/format';
+import { connectionOf, type Connection } from '@/lib/connection';
 import { personLabel, roleLabel } from '@/lib/person';
 import { db } from '@/server/db';
 import { usageByConfig, type ConfigUsage } from '@/server/usage';
@@ -34,8 +36,7 @@ type Row = {
   node: { name: string; region: string; endpoint: string } | null;
   externalSource: { name: string } | null;
   usage?: ConfigUsage;
-  /** The node could not be reached, so usage is unknown rather than zero. */
-  usageUnavailable: boolean;
+  connection: Connection;
 };
 
 const columns = (userLabel: string, canManage: boolean): Column<Row>[] => [
@@ -88,22 +89,9 @@ const columns = (userLabel: string, canManage: boolean): Column<Row>[] => [
   {
     key: 'seen',
     header: 'Last seen',
-    cell: (row) => {
-      if (row.usageUnavailable) {
-        return <span className="text-xs text-muted-foreground">Node unreachable</span>;
-      }
-      if (!row.usage?.lastHandshake) {
-        return <span className="text-xs text-muted-foreground">Never connected</span>;
-      }
-      return (
-        <span
-          className="text-xs text-muted-foreground"
-          title={formatDateTime(new Date(row.usage.lastHandshake * 1000))}
-        >
-          {relativeTime(row.usage.lastHandshake)}
-        </span>
-      );
-    },
+    cell: (row) => (
+      <ConnectionLine connection={row.connection} provider={row.externalSource?.name} />
+    ),
   },
   {
     key: 'transfer',
@@ -183,14 +171,15 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     .join(' · ');
 
   const usage = await usageByConfig(user.configs);
-  const reachableNodes = new Set([...usage.keys()]);
 
   const rows: Row[] = user.configs.map((config) => ({
     ...config,
     usage: usage.get(config.id),
-    // A live config with no reading means its node did not answer — distinct from a config
-    // that has simply never been used.
-    usageUnavailable: config.status === 'active' && !reachableNodes.has(config.id),
+    connection: connectionOf({
+      status: config.status,
+      sourceType: config.sourceType,
+      usage: usage.get(config.id),
+    }),
   }));
 
   const live = user.configs.filter((config) => config.status === 'active').length;
