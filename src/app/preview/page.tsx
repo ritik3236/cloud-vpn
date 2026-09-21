@@ -11,6 +11,7 @@ import { EnrollNodeDialog } from '@/features/nodes/enroll-node-dialog';
 import { CreateInClerkButton } from '@/features/users/create-in-clerk-button';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
 import { userColumns, type UserRow } from '@/features/users/columns';
+import { auditColumns, type AuditRow } from '@/features/audit/columns';
 
 import { ConfigCard } from '@/features/me/config-card';
 
@@ -89,6 +90,35 @@ const users: UserRow[] = [
   {
     id: 'u4', label: 'Priya Rao', secondary: 'priya@example.com', status: 'active', live: 0, configs: 1,
     presence: { kind: 'missing' },
+  },
+];
+
+const auditEntries: AuditRow[] = [
+  {
+    id: 'a1', action: 'config.view', createdAt: new Date(Date.now() - 34_000),
+    target: { id: 'cmuaiu7zi0000a1b2c3zhv01p', label: '10.8.0.3 · Phone' },
+    actor: { id: 'user_3JavOYy0RAOTKJxLz7JRwa6Rz0a', label: '@admin' },
+  },
+  {
+    id: 'a2', action: 'config.assign', createdAt: new Date(Date.now() - 41 * 60_000),
+    target: { id: 'cmuaiu7zi0000a1b2c3zhv01p', label: '10.8.0.3 · Phone' },
+    actor: { id: 'user_3JcBoAfKlgnlYPmsnnZvp9bTb4J', label: 'Asha Menon' },
+  },
+  {
+    id: 'a3', action: 'config.revoke', createdAt: new Date(Date.now() - 48 * 60_000),
+    target: { id: 'cmuag55gx00021hca3ztddsyz', label: 'Laptop' },
+    actor: null,
+  },
+  {
+    // Everything this pointed at is gone, so only the id survives — the record still stands.
+    id: 'a4', action: 'user.suspend', createdAt: new Date(Date.now() - 53 * 60_000),
+    target: { id: 'cmuag553300011hca4q0eqf86', label: null },
+    actor: { id: 'bootstrap-script', label: null },
+  },
+  {
+    id: 'a5', action: 'node.create', createdAt: new Date(Date.now() - 2 * 3600_000),
+    target: { id: 'cmuafp2fa00002jpkk0rrp6pb', label: 'VPN-1' },
+    actor: null,
   },
 ];
 
@@ -186,6 +216,14 @@ export default async function PreviewPage() {
                   }}
                 />
               </div>
+            </div>
+
+            <div className="space-y-5">
+              <PageHeader
+                title="Audit log"
+                description="Last 5 entries. Every issue, retrieval and revocation is recorded."
+              />
+              <DataTable columns={auditColumns} rows={auditEntries} rowKey={(entry) => entry.id} />
             </div>
 
             <div className="space-y-5">
