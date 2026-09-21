@@ -91,6 +91,13 @@ export function ConfigRowActions({
   const external = config.sourceType === 'static';
   const provider = config.sourceName ?? 'the provider';
 
+  const canGetFile = canRetrieve && config.status !== 'revoked';
+  const canAssign = config.status === 'unassigned';
+  const canDisable = config.status === 'active';
+  const canEnable = config.status === 'disabled';
+  const canReturn = config.status === 'active';
+  const canRevoke = config.status !== 'revoked';
+
   const run = (action: () => Promise<{ ok: boolean; message?: string; error?: string }>, undo?: () => void) =>
     startTransition(async () => {
       const result = await action();
@@ -101,6 +108,10 @@ export function ConfigRowActions({
       }
     });
 
+  // A revoked config is finished: every item below is conditioned out, and a trigger that opens
+  // an empty menu promises an action that does not exist.
+  if (!(canGetFile || canAssign || canDisable || canEnable || canReturn || canRevoke)) return null;
+
   return (
     <>
       <DropdownMenu>
@@ -110,7 +121,7 @@ export function ConfigRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          {canRetrieve && config.status !== 'revoked' ? (
+          {canGetFile ? (
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();
@@ -124,7 +135,7 @@ export function ConfigRowActions({
             </DropdownMenuItem>
           ) : null}
 
-          {config.status === 'unassigned' ? (
+          {canAssign ? (
             <DropdownMenuItem
               disabled={pending}
               onSelect={(event) => {
@@ -138,7 +149,7 @@ export function ConfigRowActions({
             </DropdownMenuItem>
           ) : null}
 
-          {config.status === 'active' ? (
+          {canDisable ? (
             // Reversible, so it just happens and offers undo — no modal in the way.
             <DropdownMenuItem
               disabled={pending}
@@ -154,14 +165,14 @@ export function ConfigRowActions({
             </DropdownMenuItem>
           ) : null}
 
-          {config.status === 'disabled' ? (
+          {canEnable ? (
             <DropdownMenuItem disabled={pending} onSelect={() => run(() => enableConfigAction(config.id))}>
               <Power className="size-4" />
               {external ? 'Show to user again' : 'Re-enable tunnel'}
             </DropdownMenuItem>
           ) : null}
 
-          {config.status === 'active' ? (
+          {canReturn ? (
             <DropdownMenuItem
               disabled={pending}
               onSelect={(event) => {
@@ -174,7 +185,7 @@ export function ConfigRowActions({
             </DropdownMenuItem>
           ) : null}
 
-          {config.status !== 'revoked' ? (
+          {canRevoke ? (
             <DropdownMenuItem
               variant="destructive"
               disabled={pending}
