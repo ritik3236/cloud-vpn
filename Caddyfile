@@ -1,7 +1,13 @@
-# Caddy terminates TLS with a real Let's Encrypt certificate. This is the ONE public hostname
+# Caddy terminates TLS with a real Let's Encrypt certificate. These are the ONLY public hostnames
 # in the system — node certificates stay self-signed and pinned, so the node inventory never
 # reaches Certificate Transparency logs (SPEC §7).
-{$APP_DOMAIN:vpn.zoiee.me} {
+{$APP_DOMAIN:tech.bizdaddy.ae} {
 	encode zstd gzip
 	reverse_proxy app:3000
+}
+
+# The control plane answered here before it became a portal. Kept so old links, bookmarks and
+# anything a node operator wrote down still arrive.
+vpn.zoiee.me {
+	redir https://{$APP_DOMAIN:tech.bizdaddy.ae}{uri} permanent
 }
