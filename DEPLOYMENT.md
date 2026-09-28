@@ -5,7 +5,7 @@ agent, so a node enrolled from this control plane always gets a matching binary.
 
 ## Prerequisites
 
-- **DNS**: `vpn.zoiee.me` → the control plane's Elastic IP (`52.77.111.2`).
+- **DNS**: `tech.bizdaddy.ae` → the control plane's Elastic IP (`52.77.111.2`).
 - **Security group**: inbound `80` and `443` from anywhere (Caddy needs 80 for the ACME
   challenge), `22` from your IP only.
 - **Docker + compose plugin** on the host.
@@ -25,7 +25,7 @@ DIRECT_URL='postgresql://…neon.tech/neondb?sslmode=verify-full&channel_binding
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_…
 CLERK_SECRET_KEY=sk_live_…
 APP_ENCRYPTION_KEY=…
-APP_DOMAIN=vpn.zoiee.me
+APP_DOMAIN=tech.bizdaddy.ae
 ```
 
 ```bash
@@ -75,7 +75,7 @@ docker compose pull ghcr.io/ritik3236/cloud-vpn:<sha> && docker compose up -d
 - **Lock each node's agent port to this host.** On every node, allow `51821/tcp` only from
   `52.77.111.2`. TLS and the bearer token already protect it; this removes it from the public
   internet entirely.
-- **Check `/install.sh` serves**: `curl -fsS https://vpn.zoiee.me/install.sh | head -1`.
+- **Check `/install.sh` serves**: `curl -fsS https://tech.bizdaddy.ae/install.sh | head -1`.
 - **Rotate the Clerk secret and the Neon role password** if they have ever been pasted anywhere
   they should not persist.
 
@@ -96,7 +96,7 @@ Order matters — do it in this sequence to keep the dark window short:
    `APP_DOMAIN=tech.bizdaddy.ae` there too.
 4. **Rebuild**: push (or re-run CI) so the image carries the new key, then
    `docker compose pull && docker compose up -d` on the host.
-5. **Keep the old name alive**: add a redirect block to the Caddyfile so `vpn.zoiee.me` sends
+5. **Keep the old name alive**: add a redirect block to the Caddyfile so `tech.bizdaddy.ae` sends
    traffic to the new host instead of dying.
 
 Everyone is signed out by the switch — sessions belong to the old Clerk domain. Nodes are

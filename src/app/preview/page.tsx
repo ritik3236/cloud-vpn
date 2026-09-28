@@ -166,7 +166,7 @@ export default async function PreviewPage() {
             </div>
 
             <div className="space-y-5">
-              <PageHeader title="Nodes" description="2 nodes issuing configs." action={<EnrollNodeDialog serverUrl="https://vpn.zoiee.me" />} />
+              <PageHeader title="Nodes" description="2 nodes issuing configs." action={<EnrollNodeDialog serverUrl="https://tech.bizdaddy.ae" />} />
               <DataTable columns={nodeColumns(true)} rows={nodes} rowKey={(n) => n.id} />
             </div>
 
