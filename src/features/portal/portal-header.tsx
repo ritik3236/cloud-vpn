@@ -33,7 +33,8 @@ export function PortalHeader({ service, signedIn }: { service?: string; signedIn
       </div>
 
       <div className="flex items-center gap-1">
-        <div className="w-36">
+        {/* Three controls do not fit a phone header; the palette is the one that can wait. */}
+        <div className="hidden w-36 sm:block">
           <AppearancePicker />
         </div>
         {signedIn ? (
