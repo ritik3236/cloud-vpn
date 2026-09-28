@@ -22,7 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               This account has no staff role, so the control plane is not available to you.
             </p>
             <Button asChild size="sm" className="h-8">
-              <Link href="/me">Go to your connections</Link>
+              <Link href="/vpn/me">Go to your connections</Link>
             </Button>
           </div>
         </main>

@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 
 import { APPEARANCE_COOKIE, isAppearance } from "@/design-system/appearance";
+import { PORTAL } from "@/features/services/registry";
 
 import "./globals.css";
 
@@ -11,8 +12,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Cloud VPN",
-  description: "Control plane for the WireGuard node fleet",
+  title: PORTAL.name,
+  description: PORTAL.tagline,
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

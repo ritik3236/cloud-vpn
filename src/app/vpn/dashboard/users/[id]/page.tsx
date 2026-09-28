@@ -188,7 +188,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-5">
       <Button asChild variant="ghost" size="sm" className="-ml-2 h-8 text-muted-foreground">
-        <Link href="/dashboard/users">
+        <Link href="/vpn/dashboard/users">
           <ArrowLeft className="size-4" />
           All users
         </Link>
@@ -245,7 +245,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           hint="Generate a spare on a node, then assign it from the configs page."
           action={
             <Button asChild size="sm" className="h-8">
-              <Link href="/dashboard/configs">Go to configs</Link>
+              <Link href="/vpn/dashboard/configs">Go to configs</Link>
             </Button>
           }
         />

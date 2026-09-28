@@ -1,7 +1,7 @@
 'use client';
 
 import { useClerk, useUser } from '@clerk/nextjs';
-import { KeyRound, LayoutDashboard, LogOut, ScrollText, Server, Users } from 'lucide-react';
+import { KeyRound, LayoutDashboard, LayoutGrid, LogOut, ScrollText, Server, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -24,11 +24,11 @@ import {
 } from '@/design-system/ui/sidebar';
 
 const NAV = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/nodes', label: 'Nodes', icon: Server },
-  { href: '/dashboard/configs', label: 'Configs', icon: KeyRound },
-  { href: '/dashboard/users', label: 'Users', icon: Users },
-  { href: '/dashboard/audit', label: 'Audit log', icon: ScrollText },
+  { href: '/vpn/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { href: '/vpn/dashboard/nodes', label: 'Nodes', icon: Server },
+  { href: '/vpn/dashboard/configs', label: 'Configs', icon: KeyRound },
+  { href: '/vpn/dashboard/users', label: 'Users', icon: Users },
+  { href: '/vpn/dashboard/audit', label: 'Audit log', icon: ScrollText },
 ];
 
 export function AppSidebar({ role }: { role: string }) {
@@ -39,7 +39,7 @@ export function AppSidebar({ role }: { role: string }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="h-14 justify-center px-3">
-        <Link href="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
+        <Link href="/vpn/dashboard" className="flex items-center gap-2.5 overflow-hidden">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
             <KeyRound className="size-4" />
           </span>
@@ -73,6 +73,17 @@ export function AppSidebar({ role }: { role: string }) {
       </SidebarContent>
 
       <SidebarFooter className="gap-1">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="All services">
+              <Link href="/">
+                <LayoutGrid />
+                <span>All services</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
         <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:hidden">
           <Avatar className="size-7">
             <AvatarImage src={user?.imageUrl} alt="" />

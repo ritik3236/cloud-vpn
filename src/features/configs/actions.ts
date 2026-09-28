@@ -18,7 +18,7 @@ import {
 } from '@/server/configs/lifecycle';
 
 const done = (message: string): ActionResult => {
-  revalidatePath('/dashboard/configs');
+  revalidatePath('/vpn/dashboard/configs');
   return { ok: true, message };
 };
 

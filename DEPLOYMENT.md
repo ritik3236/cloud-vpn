@@ -79,6 +79,30 @@ docker compose pull ghcr.io/ritik3236/cloud-vpn:<sha> && docker compose up -d
 - **Rotate the Clerk secret and the Neon role password** if they have ever been pasted anywhere
   they should not persist.
 
+## Changing the control-plane domain
+
+The app barely knows its own hostname — `APP_DOMAIN` drives Caddy, which fetches its own
+certificate. **Clerk is the part with teeth**: it requires its Frontend API to be a subdomain of
+the app's domain, so the instance must move with the app, and moving it mints a new publishable
+key. That key is inlined into the bundle at build time, so this is a rebuild, not a config edit.
+
+Order matters — do it in this sequence to keep the dark window short:
+
+1. **DNS**: `A tech.bizdaddy.ae → 52.77.111.2`. Confirm it resolves before going further.
+2. **Clerk**: Dashboard → Domains → change the production domain, then add the CNAME records it
+   prints (under `bizdaddy.ae`). Propagation can take hours; Clerk warns up to 48.
+3. **New key**: copy the regenerated `pk_live_…` into the GitHub repository variable
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` **and** `/opt/cloud-vpn/.env`, and set
+   `APP_DOMAIN=tech.bizdaddy.ae` there too.
+4. **Rebuild**: push (or re-run CI) so the image carries the new key, then
+   `docker compose pull && docker compose up -d` on the host.
+5. **Keep the old name alive**: add a redirect block to the Caddyfile so `vpn.zoiee.me` sends
+   traffic to the new host instead of dying.
+
+Everyone is signed out by the switch — sessions belong to the old Clerk domain. Nodes are
+unaffected: the control plane calls them, never the reverse, and `51821` is locked to the Elastic
+IP, which does not change.
+
 ## Checks
 
 ```bash

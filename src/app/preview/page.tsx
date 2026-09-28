@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { configQrSvg } from '@/server/qr';
-import { AppSidebar } from '@/app/dashboard/app-sidebar';
+import { AppSidebar } from '@/app/vpn/dashboard/app-sidebar';
 import { DataTable, EmptyState, PageHeader, StatCard } from '@/design-system';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/design-system/ui/sidebar';
 import { configColumns, type ConfigRow } from '@/features/configs/columns';
@@ -12,6 +12,8 @@ import { CreateInClerkButton } from '@/features/users/create-in-clerk-button';
 import { nodeColumns, type NodeRow } from '@/features/nodes/columns';
 import { userColumns, type UserRow } from '@/features/users/columns';
 import { auditColumns, type AuditRow } from '@/features/audit/columns';
+import { PortalHeader } from '@/features/portal/portal-header';
+import { ServiceGrid } from '@/features/services/service-grid';
 
 import { ConfigCard } from '@/features/me/config-card';
 
@@ -215,6 +217,20 @@ export default async function PreviewPage() {
                     connection: { kind: 'none' },
                   }}
                 />
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <PageHeader title="Portal" description="The front door, as a signed-in person sees it." />
+              <div className="rounded-lg border border-border">
+                <PortalHeader service="Cloud VPN" signedIn />
+                <div className="p-6">
+                  <h2 className="text-2xl font-semibold tracking-tight">Choose a service</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Everything your account can open.</p>
+                  <div className="mt-6">
+                    <ServiceGrid hrefFor={(service) => service.entry('admin')} />
+                  </div>
+                </div>
               </div>
             </div>
 

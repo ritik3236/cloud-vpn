@@ -97,7 +97,7 @@ export default async function OverviewPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Recent activity</h2>
           <Button asChild variant="ghost" size="sm" className="h-8">
-            <Link href="/dashboard/audit">View audit log</Link>
+            <Link href="/vpn/dashboard/audit">View audit log</Link>
           </Button>
         </div>
 
@@ -107,7 +107,7 @@ export default async function OverviewPage() {
             hint="Add a node, then generate your first config."
             action={
               <Button asChild size="sm" className="h-8">
-                <Link href="/dashboard/nodes">Go to nodes</Link>
+                <Link href="/vpn/dashboard/nodes">Go to nodes</Link>
               </Button>
             }
           />

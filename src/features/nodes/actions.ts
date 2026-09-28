@@ -19,7 +19,7 @@ export async function createEnrollmentTokenAction(formData: FormData): Promise<T
       cidrPool: text('cidrPool'),
       dns: text('dns'),
     });
-    revalidatePath('/dashboard/nodes');
+    revalidatePath('/vpn/dashboard/nodes');
     return { ok: true, token };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -29,7 +29,7 @@ export async function createEnrollmentTokenAction(formData: FormData): Promise<T
 export async function removeNodeAction(nodeId: string): Promise<ActionResult> {
   try {
     const node = await removeNode({ nodeId });
-    revalidatePath('/dashboard/nodes');
+    revalidatePath('/vpn/dashboard/nodes');
     return { ok: true, message: `${node.name} removed.` };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

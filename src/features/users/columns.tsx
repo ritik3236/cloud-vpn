@@ -33,7 +33,7 @@ export const userColumns = (canManage: boolean): Column<UserRow>[] => [
             {/* The name is the link, not the row — the row also carries an actions menu, and a
                 button inside a link is not a thing. */}
             <Link
-              href={`/dashboard/users/${user.id}`}
+              href={`/vpn/dashboard/users/${user.id}`}
               className="truncate text-sm font-medium hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               {user.label}

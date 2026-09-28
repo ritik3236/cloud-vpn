@@ -16,7 +16,7 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
 - Configs from two kinds of source, behind one "issue config" action:
   - **Managed** self-hosted nodes → generate + provision + revoke automatically.
   - **External** providers (Proton) → store an admin-supplied `.conf` and assign it.
-- Self-service **user dashboard** (`/me`): a client logs in once, sees their own configs,
+- Self-service **user dashboard** (`/vpn/me`): a client logs in once, sees their own configs,
   downloads / QR, nothing else. Retrieval is scoped to the signed-in identity, and a config
   belonging to someone else returns the same error as one that does not exist — so ids cannot be
   probed. Self-retrieval is audited exactly like an admin's, because it is equally a delivery.
@@ -412,6 +412,20 @@ Decided 2026-09-20:
 - **Key material is admin-only** — ops gets metadata plus the disable/revoke kill switch, never
   a private key (§2).
 
+Decided 2026-09-28:
+- **One portal, services as paths.** `tech.bizdaddy.ae` is the front door; the VPN lives under
+  `/vpn` (`/vpn/dashboard` for staff, `/vpn/me` for everyone else). One deployment, one Clerk
+  instance, one session — a second service is a folder and an entry in the service registry, not
+  another host to run. Old `/dashboard` and `/me` links redirect permanently, so nothing that was
+  bookmarked breaks.
+- **Signing in lands on the chooser, not on a service**, even while the VPN is the only one there.
+  It costs a click today and buys a portal that does not have to be retrofitted the moment a
+  second service exists.
+- **Clerk's domain is part of the app's domain.** Clerk requires its Frontend API to sit on a
+  subdomain of the app (`clerk.tech.bizdaddy.ae`), so moving the app means moving the Clerk
+  production instance too — which mints a **new publishable key**. That key is compiled into the
+  bundle, so a domain change is a rebuild and redeploy, not a config edit. Runbook: DEPLOYMENT.md.
+
 Decided 2026-09-21:
 - **"In use" is a separate axis from `status`, and unknowable for external configs.** A managed
   peer's last handshake says whether it is carrying traffic now; an external config terminates on
@@ -435,7 +449,6 @@ Decided 2026-09-21:
   automatically needs a Clerk webhook (open).
 
 Still to decide:
-- Control-plane domain (highbytestech.com subdomain? new domain?).
 - A Clerk webhook (`user.created` / `user.banned` / `user.deleted`) so the mirror updates without
   a page load and a ban made in Clerk drops tunnels by itself.
 
