@@ -31,6 +31,7 @@
 
 /* ---- shared: dark-mode status ---- */
 [data-appearance="slate-dark"],
+[data-appearance="rose-dark"],
 [data-appearance="violet-dark"],
 [data-appearance="amber-dark"],
 [data-appearance="dim"] {
@@ -51,40 +52,40 @@
 }
 
 /*
- * First visit, no cookie yet: follow the system with pure CSS. light-dark() carries the
- * slate-light / slate-dark pair in one declaration, so there is no script to run before paint
- * and nothing to keep in sync with a duplicated dark block.
+ * First visit, no cookie yet: Rose, following the system for light or dark. light-dark()
+ * carries the rose-light / rose-dark pair in one declaration, so there is no script to run
+ * before paint and nothing to keep in sync with a duplicated dark block.
  */
 :root:not([data-appearance]) {
   color-scheme: light dark;
 
-  --background: light-dark(oklch(0.995 0 0), oklch(0.145 0.005 285.8));
-  --foreground: light-dark(oklch(0.21 0.006 285.9), oklch(0.975 0 0));
-  --card: light-dark(oklch(1 0 0), oklch(0.2 0.006 285.9));
-  --card-foreground: light-dark(oklch(0.21 0.006 285.9), oklch(0.975 0 0));
-  --popover: light-dark(oklch(1 0 0), oklch(0.2 0.006 285.9));
-  --popover-foreground: light-dark(oklch(0.21 0.006 285.9), oklch(0.975 0 0));
-  --primary: light-dark(oklch(0.25 0.012 285), oklch(0.96 0 0));
-  --primary-foreground: light-dark(oklch(0.985 0 0), oklch(0.2 0.006 285.9));
-  --secondary: light-dark(oklch(0.967 0.001 286.4), oklch(0.27 0.006 286));
-  --secondary-foreground: light-dark(oklch(0.21 0.006 285.9), oklch(0.975 0 0));
-  --muted: light-dark(oklch(0.967 0.001 286.4), oklch(0.27 0.006 286));
-  --muted-foreground: light-dark(oklch(0.505 0.016 285.9), oklch(0.72 0.015 286.1));
-  --accent: light-dark(oklch(0.955 0.004 286), oklch(0.29 0.008 286));
-  --accent-foreground: light-dark(oklch(0.21 0.006 285.9), oklch(0.975 0 0));
+  --background: light-dark(oklch(0.995 0.003 20), oklch(0.16 0.016 18));
+  --foreground: light-dark(oklch(0.22 0.02 20), oklch(0.96 0.006 20));
+  --card: light-dark(oklch(1 0 0), oklch(0.21 0.02 18));
+  --card-foreground: light-dark(oklch(0.22 0.02 20), oklch(0.96 0.006 20));
+  --popover: light-dark(oklch(1 0 0), oklch(0.21 0.02 18));
+  --popover-foreground: light-dark(oklch(0.22 0.02 20), oklch(0.96 0.006 20));
+  --primary: light-dark(oklch(0.55 0.17 18), oklch(0.7 0.16 10));
+  --primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.16 0.02 18));
+  --secondary: light-dark(oklch(0.96 0.015 20), oklch(0.28 0.028 18));
+  --secondary-foreground: light-dark(oklch(0.27 0.03 20), oklch(0.96 0.006 20));
+  --muted: light-dark(oklch(0.965 0.01 20), oklch(0.28 0.028 18));
+  --muted-foreground: light-dark(oklch(0.5 0.025 20), oklch(0.75 0.02 20));
+  --accent: light-dark(oklch(0.95 0.03 18), oklch(0.31 0.038 18));
+  --accent-foreground: light-dark(oklch(0.27 0.05 18), oklch(0.97 0.006 20));
   --destructive: light-dark(oklch(0.55 0.22 27.3), oklch(0.7 0.19 22.2));
   --destructive-foreground: oklch(0.99 0 0);
-  --border: light-dark(oklch(0.915 0.004 286.3), oklch(1 0 0 / 11%));
-  --input: light-dark(oklch(0.915 0.004 286.3), oklch(1 0 0 / 14%));
-  --ring: light-dark(oklch(0.6 0.02 286), oklch(0.6 0.016 285.9));
-  --sidebar: light-dark(oklch(0.975 0.002 286), oklch(0.175 0.005 286));
-  --sidebar-foreground: light-dark(oklch(0.21 0.006 285.9), oklch(0.95 0 0));
-  --sidebar-primary: light-dark(oklch(0.25 0.012 285), oklch(0.96 0 0));
-  --sidebar-primary-foreground: light-dark(oklch(0.985 0 0), oklch(0.2 0.006 285.9));
-  --sidebar-accent: light-dark(oklch(0.93 0.004 286), oklch(0.28 0.008 286));
-  --sidebar-accent-foreground: light-dark(oklch(0.21 0.006 285.9), oklch(0.975 0 0));
-  --sidebar-border: light-dark(oklch(0.9 0.004 286), oklch(1 0 0 / 9%));
-  --sidebar-ring: light-dark(oklch(0.6 0.02 286), oklch(0.6 0.016 285.9));
+  --border: light-dark(oklch(0.905 0.018 20), oklch(1 0 0 / 12%));
+  --input: light-dark(oklch(0.905 0.018 20), oklch(1 0 0 / 15%));
+  --ring: light-dark(oklch(0.55 0.17 18), oklch(0.7 0.16 10));
+  --sidebar: light-dark(oklch(0.975 0.012 20), oklch(0.19 0.022 18));
+  --sidebar-foreground: light-dark(oklch(0.24 0.02 20), oklch(0.94 0.006 20));
+  --sidebar-primary: light-dark(oklch(0.55 0.17 18), oklch(0.7 0.16 10));
+  --sidebar-primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.16 0.02 18));
+  --sidebar-accent: light-dark(oklch(0.93 0.035 18), oklch(0.3 0.038 18));
+  --sidebar-accent-foreground: light-dark(oklch(0.26 0.05 18), oklch(0.97 0.006 20));
+  --sidebar-border: light-dark(oklch(0.895 0.02 20), oklch(1 0 0 / 10%));
+  --sidebar-ring: light-dark(oklch(0.55 0.17 18), oklch(0.7 0.16 10));
 
   --tone-live: light-dark(oklch(0.45 0.13 155), oklch(0.8 0.15 155));
   --tone-live-bg: light-dark(oklch(0.95 0.04 155), oklch(0.28 0.06 155));
@@ -241,6 +242,36 @@
   --sidebar-accent-foreground: oklch(0.95 0.008 265);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.65 0.03 265);
+}
+
+/* ---- palette: rose dark ---- */
+[data-appearance="rose-dark"] {
+  --background: oklch(0.16 0.016 18);
+  --foreground: oklch(0.96 0.006 20);
+  --card: oklch(0.21 0.02 18);
+  --card-foreground: oklch(0.96 0.006 20);
+  --popover: oklch(0.21 0.02 18);
+  --popover-foreground: oklch(0.96 0.006 20);
+  /* Pulled to a pinker hue than `--tone-dead` (22) so a primary button never reads as danger. */
+  --primary: oklch(0.7 0.16 10);
+  --primary-foreground: oklch(0.16 0.02 18);
+  --secondary: oklch(0.28 0.028 18);
+  --secondary-foreground: oklch(0.96 0.006 20);
+  --muted: oklch(0.28 0.028 18);
+  --muted-foreground: oklch(0.75 0.02 20);
+  --accent: oklch(0.31 0.038 18);
+  --accent-foreground: oklch(0.97 0.006 20);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.7 0.16 10);
+  --sidebar: oklch(0.19 0.022 18);
+  --sidebar-foreground: oklch(0.94 0.006 20);
+  --sidebar-primary: oklch(0.7 0.16 10);
+  --sidebar-primary-foreground: oklch(0.16 0.02 18);
+  --sidebar-accent: oklch(0.3 0.038 18);
+  --sidebar-accent-foreground: oklch(0.97 0.006 20);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.7 0.16 10);
 }
 
 /* ---- palette: violet dark ---- */

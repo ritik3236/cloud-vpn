@@ -19,12 +19,13 @@ export const APPEARANCES: Appearance[] = [
   { id: 'emerald-light', name: 'Emerald', mode: 'light', swatch: ['#f6fdfa', '#0f7a5f'] },
   { id: 'rose-light', name: 'Rose', mode: 'light', swatch: ['#fffafb', '#c2405b'] },
   { id: 'slate-dark', name: 'Slate', mode: 'dark', swatch: ['#18181b', '#fafafa'] },
+  { id: 'rose-dark', name: 'Rose', mode: 'dark', swatch: ['#221316', '#ef6e88'] },
   { id: 'dim', name: 'Dim', mode: 'dark', swatch: ['#2e3440', '#e2e6ee'] },
   { id: 'violet-dark', name: 'Violet', mode: 'dark', swatch: ['#1a1424', '#a78bfa'] },
   { id: 'amber-dark', name: 'Amber', mode: 'dark', swatch: ['#1b1610', '#f0b429'] },
 ];
 
-export const DEFAULT_APPEARANCE = 'slate-light';
+export const DEFAULT_APPEARANCE = 'rose-light';
 export const APPEARANCE_COOKIE = 'cvpn-appearance';
 
 export const isAppearance = (value: string | undefined): boolean =>
