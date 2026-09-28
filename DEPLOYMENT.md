@@ -72,9 +72,12 @@ docker compose pull ghcr.io/ritik3236/cloud-vpn:<sha> && docker compose up -d
 
 ## After the first deploy
 
-- **Lock each node's agent port to this host.** On every node, allow `51821/tcp` only from
-  `52.77.111.2`. TLS and the bearer token already protect it; this removes it from the public
-  internet entirely.
+- **Lock each node's agent port to this host — over IPv6 too.** On every node, allow `51821/tcp`
+  only from `52.77.111.2` (plus loopback and the node's own IP, which the installer's readiness
+  check uses), and drop it on IPv6. The agent binds dual-stack, so an IPv4-only rule leaves the
+  port open to the whole IPv6 internet on any node that has an address there. TLS and the bearer
+  token already protect it; this removes it from the public internet entirely. Persist only the
+  INPUT rules — wg-quick re-adds its own FORWARD and NAT rules at boot.
 - **Check `/install.sh` serves**: `curl -fsS https://tech.bizdaddy.ae/install.sh | head -1`.
 - **Rotate the Clerk secret and the Neon role password** if they have ever been pasted anywhere
   they should not persist.
