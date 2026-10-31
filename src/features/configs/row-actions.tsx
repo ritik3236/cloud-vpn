@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from '@/design-system/ui/dialog';
 
-import { AssigneeField, emptyChoice, readChoice } from './assignee-field';
+import { AssigneeField, choiceTarget, emptyChoice, readChoice } from './assignee-field';
 import { ConfigFileDialog } from './config-file-dialog';
 import {
   assignConfigAction,
@@ -219,7 +219,7 @@ export function ConfigRowActions({
               size="sm"
               className="h-8"
               onClick={() => {
-                const { assignee, problem } = readChoice(choice);
+                const { assignee, problem } = readChoice(choice, users, false);
                 if (!assignee) {
                   toast.error(problem);
                   return;
@@ -238,7 +238,7 @@ export function ConfigRowActions({
               }}
             >
               <UserPlus className="size-4" />
-              {pending ? 'Assigning…' : 'Assign config'}
+              {pending ? 'Assigning…' : choiceTarget(choice, users) ? `Assign to ${choiceTarget(choice, users)}` : 'Assign config'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -25,7 +25,7 @@ import {
 } from '@/design-system/ui/select';
 
 import { generateConfigAction } from './actions';
-import { AssigneeField, SPARE, emptyChoice, isAssigning, readChoice } from './assignee-field';
+import { AssigneeField, choiceTarget, emptyChoice, readChoice } from './assignee-field';
 import { ConfigFileDialog } from './config-file-dialog';
 import type { AssignableUser } from './row-actions';
 import { useConfigFile } from './use-config-file';
@@ -42,14 +42,15 @@ export function GenerateConfigDialog({
   const [open, setOpen] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
-  const [choice, setChoice] = React.useState(emptyChoice(SPARE));
+  const [choice, setChoice] = React.useState(emptyChoice);
   const file = useConfigFile();
+  const target = choiceTarget(choice, users);
 
   // A plain handler rather than useActionState + an effect: setState inside an effect triggers
   // cascading renders, and preventDefault keeps the typed values through a failed submit.
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const { assignee, problem } = readChoice(choice);
+    const { assignee, problem } = readChoice(choice, users, true);
     if (problem) {
       toast.error(problem);
       return;
@@ -68,7 +69,7 @@ export function GenerateConfigDialog({
       }
       toast.success(result.message);
       setError(null);
-      setChoice(emptyChoice(SPARE));
+      setChoice(emptyChoice());
       setOpen(false);
       // A live config is about to be handed over, so its file comes straight up. A spare's does
       // not: a retrieval is recorded as a delivery, and nobody holds the spare yet.
@@ -147,7 +148,7 @@ export function GenerateConfigDialog({
                 {error}
               </p>
               <Button type="submit" size="sm" className="h-8">
-                {pending ? 'Generating…' : isAssigning(choice) ? 'Generate and Assign' : 'Generate config'}
+                {pending ? 'Generating…' : target ? `Generate for ${target}` : 'Generate config'}
               </Button>
             </DialogFooter>
           </form>
