@@ -39,7 +39,10 @@ export async function reactivateUserAction(userId: string): Promise<ActionResult
     revalidatePath('/vpn/dashboard/users');
     return {
       ok: true,
-      message: `${personLabel(user)} can sign in again. Their tunnels stay off until you re-enable them.`,
+      message:
+        user.kind === 'local'
+          ? `${personLabel(user)} is active again. Their tunnels stay off until you re-enable them.`
+          : `${personLabel(user)} can sign in again. Their tunnels stay off until you re-enable them.`,
     };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

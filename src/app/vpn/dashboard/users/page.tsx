@@ -38,13 +38,15 @@ export default async function UsersPage() {
       status: user.status,
       live: user.configs.filter((config) => config.status === 'active').length,
       configs: user.configs.length,
-      presence: presenceOf(user.clerkId),
+      presence: presenceOf(user),
     };
   });
 
   const missing = rows.filter((row) => row.presence.kind === 'missing').length;
+  const local = rows.filter((row) => row.presence.kind === 'local').length;
   const description = people
     ? `${pluralise(people.length, 'person', 'people')} in Clerk, ${people.filter((person) => !person.banned).length} active` +
+      `${local ? `, ${local} with no login` : ''}` +
       `${missing ? `, ${missing} not in Clerk` : ''}.` +
       `${users.length === TAKE ? ` Showing the ${TAKE} most recent.` : ''}`
     : 'People who sign in and hold configs.';
@@ -70,16 +72,17 @@ export default async function UsersPage() {
       {rows.length === 0 ? (
         <EmptyState
           title="No one here yet"
-          hint="People come from Clerk. Create one there with a username and password and no role — a role would make them staff. They show up here as soon as they exist."
+          hint="People who sign in come from Clerk: create one there with a username and password and no role — a role would make them staff. Someone who only needs a file needs no login: add them by name from Generate config on the configs page."
           action={canManage ? <CreateInClerkButton /> : null}
         />
       ) : (
         <>
           <DataTable columns={userColumns(canManage)} rows={rows} rowKey={(user) => user.id} />
           <p className="text-xs text-muted-foreground">
-            Clerk is the register of people; this list mirrors it. Suspending someone here bans
-            them in Clerk and switches their tunnels off. A ban made in Clerk itself stops sign-in
-            only — their tunnels keep running until you stop them here.
+            People who sign in are mirrored from Clerk; people marked No login were added here and
+            get their files from an admin. Suspending someone switches their tunnels off, and bans
+            them in Clerk if they have an account. A ban made in Clerk itself stops sign-in only —
+            their tunnels keep running until you stop them here.
           </p>
         </>
       )}

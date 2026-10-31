@@ -23,11 +23,12 @@ import {
 import { pluralise } from '@/lib/format';
 
 import { reactivateUserAction, suspendUserAction } from './actions';
+import type { Access } from './presence';
 
 export function UserRowActions({
   user,
 }: {
-  user: { id: string; label: string; status: string; liveConfigs: number; inClerk: boolean };
+  user: { id: string; label: string; status: string; liveConfigs: number; access: Access };
 }) {
   const [pending, startTransition] = React.useTransition();
   const [confirming, setConfirming] = React.useState(false);
@@ -40,14 +41,17 @@ export function UserRowActions({
     });
 
   const active = user.status === 'active';
+  const local = user.access === 'local';
   /**
    * Blocking sign-in and stopping tunnels are two halves of the same action, and the first half
-   * can already be done — banned in Clerk directly, or no Clerk account at all. Then the tunnels
+   * can already be done — banned in Clerk directly, or the Clerk account gone. Then the tunnels
    * are the only thing left to cut, and saying "suspend" would describe work already finished.
+   * A no-login person has no first half at all: suspending them is stopping their tunnels and
+   * keeping new configs from being assigned to them.
    */
-  const tunnelsOnly = user.liveConfigs > 0 && (!active || !user.inClerk);
-  const canSuspend = tunnelsOnly || (active && user.inClerk);
-  const canReactivate = !active && user.inClerk;
+  const tunnelsOnly = user.liveConfigs > 0 && (user.access === 'missing' || (!active && !local));
+  const canSuspend = tunnelsOnly || (active && user.access !== 'missing');
+  const canReactivate = !active && user.access !== 'missing';
   if (!canSuspend && !canReactivate) return null;
 
   const stop = () => {
@@ -94,10 +98,14 @@ export function UserRowActions({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {tunnelsOnly
-                ? `${user.inClerk ? 'They are already blocked from signing in' : 'They have no Clerk account, so they cannot sign in'}, but ${pluralise(user.liveConfigs, 'tunnel')} still connects. This disables the configs rather than revoking them, so you can re-enable them later.`
-                : user.liveConfigs > 0
-                  ? `This bans them in Clerk — signed out everywhere, no sign-in — and stops ${pluralise(user.liveConfigs, 'live tunnel')} immediately. The configs are disabled, not revoked, so you can re-enable them individually later.`
-                  : 'This bans them in Clerk — signed out everywhere, no sign-in. They hold no live tunnels, so nothing disconnects.'}
+                ? `${user.access === 'missing' ? 'They have no Clerk account, so they cannot sign in' : 'They are already blocked from signing in'}, but ${pluralise(user.liveConfigs, 'tunnel')} still connects. This disables the configs rather than revoking them, so you can re-enable them later.`
+                : local
+                  ? user.liveConfigs > 0
+                    ? `This stops ${pluralise(user.liveConfigs, 'live tunnel')} immediately and keeps new configs from being assigned to them. They have no login, so there is nothing else to block. The configs are disabled, not revoked, so you can re-enable them later.`
+                    : 'This keeps new configs from being assigned to them. They hold no live tunnels, so nothing disconnects.'
+                  : user.liveConfigs > 0
+                    ? `This bans them in Clerk — signed out everywhere, no sign-in — and stops ${pluralise(user.liveConfigs, 'live tunnel')} immediately. The configs are disabled, not revoked, so you can re-enable them individually later.`
+                    : 'This bans them in Clerk — signed out everywhere, no sign-in. They hold no live tunnels, so nothing disconnects.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

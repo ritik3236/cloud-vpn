@@ -143,6 +143,39 @@ export async function suspendUser(input: { userId: string }): Promise<SuspendRes
   };
 }
 
+export class DuplicatePersonError extends Error {
+  constructor(name: string) {
+    super(`${name} already exists — choose them from the list instead.`);
+    this.name = 'DuplicatePersonError';
+  }
+}
+
+const NAME_MAX = 80;
+
+/**
+ * A person with no login, for configs an admin hands over directly. The name is the only thing
+ * that tells them apart, so a second "Ahmed" is refused: it would split one person's tunnels in
+ * two, and suspending one would leave the other connected.
+ */
+export async function createLocalPerson(input: { name: string }) {
+  const staff = await actingStaff('admin');
+  const name = input.name.trim();
+  if (!name) throw new Error('Give the new person a name.');
+  if (name.length > NAME_MAX) throw new Error(`Keep the name under ${NAME_MAX} characters.`);
+
+  const existing = await db.user.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
+  if (existing) throw new DuplicatePersonError(personLabel(existing));
+
+  const person = await db.user.create({ data: { name, kind: 'local' } });
+  await recordAudit({
+    actorId: staff.clerkId,
+    action: AUDIT_ACTIONS.userCreateLocal,
+    target: person.id,
+    detail: { name },
+  });
+  return person;
+}
+
 /**
  * Lifts the Clerk ban so they can sign in again, but deliberately leaves tunnels off — access is
  * restored per config, so nobody silently regains every tunnel they once had.

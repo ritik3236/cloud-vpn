@@ -16,7 +16,8 @@ import { Badge } from '@/design-system/ui/badge';
 import { Button } from '@/design-system/ui/button';
 import { ConnectionLine } from '@/features/configs/connection-line';
 import { ConfigRowActions } from '@/features/configs/row-actions';
-import { presenceLookup } from '@/features/users/presence';
+import { NoLoginBadge } from '@/features/users/no-login-badge';
+import { accessOf, presenceLookup } from '@/features/users/presence';
 import { UserRowActions } from '@/features/users/row-actions';
 import { formatBytes, formatDate, formatNumber, relativeTime, truncateId } from '@/lib/format';
 import { connectionOf, type Connection } from '@/lib/connection';
@@ -151,16 +152,18 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 
   const label = personLabel(user);
 
-  const presence = presenceLookup(await syncUsersFromClerk())(user.clerkId);
+  const presence = presenceLookup(await syncUsersFromClerk())(user);
   const person = presence.kind === 'present' ? presence.person : null;
   const missingFromClerk = presence.kind === 'missing';
   const staffRole = roleLabel(person?.role ?? null);
   const identity = [
     user.username && label !== `@${user.username}` ? `@${user.username}` : null,
     user.email && label !== user.email ? user.email : null,
-    missingFromClerk
-      ? 'no Clerk account, so they cannot sign in'
-      : person
+    presence.kind === 'local'
+      ? 'no login — an admin hands over their files'
+      : missingFromClerk
+        ? 'no Clerk account, so they cannot sign in'
+        : person
         ? person.lastSignInAt
           ? `last signed in ${relativeTime(person.lastSignInAt)}`
           : 'never signed in'
@@ -210,12 +213,13 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 {staffRole}
               </Badge>
             ) : null}
+            {presence.kind === 'local' ? <NoLoginBadge /> : null}
           </div>
           <p className="mt-1 truncate text-sm text-muted-foreground">{identity}</p>
         </div>
         {role === 'admin' ? (
           <UserRowActions
-            user={{ id: user.id, label, status: user.status, liveConfigs: live, inClerk: !missingFromClerk }}
+            user={{ id: user.id, label, status: user.status, liveConfigs: live, access: accessOf(presence) }}
           />
         ) : null}
       </header>

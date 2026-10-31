@@ -15,6 +15,7 @@ export const AUDIT_ACTIONS = {
   nodeEnrollToken: 'node.enroll_token',
   nodeCreate: 'node.create',
   nodeDelete: 'node.delete',
+  userCreateLocal: 'user.create_local',
   userSuspend: 'user.suspend',
   userReactivate: 'user.reactivate',
 } as const;

@@ -30,13 +30,17 @@ export default async function ConfigsPage() {
     listExternalSources(),
   ]);
 
-  // Only active people who exist in Clerk can receive a config: suspending someone is meant to
-  // stop access, and a row with no Clerk account behind it is nobody who can sign in and use one.
-  // If Clerk is unreachable we fall back to every linked row rather than emptying the list.
+  // Only active people can receive a config — suspending someone is meant to stop access — and
+  // only real ones: a no-login person an admin created, or someone who still exists in Clerk. A
+  // mirror row Clerk no longer has is nobody. If Clerk is unreachable we fall back to every linked
+  // row rather than emptying the list.
   const people = await db.user.findMany({
     where: {
       status: 'active',
-      clerkId: clerkPeople ? { in: clerkPeople.map((person) => person.clerkId) } : { not: null },
+      OR: [
+        { kind: 'local' },
+        { clerkId: clerkPeople ? { in: clerkPeople.map((person) => person.clerkId) } : { not: null } },
+      ],
     },
     select: { id: true, name: true, username: true, email: true },
   });

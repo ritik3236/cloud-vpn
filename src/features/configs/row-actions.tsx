@@ -28,25 +28,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/ui/dialog';
-import { Label } from '@/design-system/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/design-system/ui/select';
 
+import { AssigneeField, emptyChoice, readChoice } from './assignee-field';
 import { ConfigFileDialog } from './config-file-dialog';
 import {
   assignConfigAction,
   disableConfigAction,
   enableConfigAction,
-  retrieveConfigAction,
   revokeConfigAction,
   unassignConfigAction,
 } from './actions';
-import type { RetrieveResult } from './actions';
+import { useConfigFile } from './use-config-file';
 
 export type AssignableUser = { id: string; label: string };
 
@@ -75,12 +67,11 @@ export function ConfigRowActions({
   const [confirming, setConfirming] = React.useState(false);
   const [returning, setReturning] = React.useState(false);
   const [assigning, setAssigning] = React.useState(false);
-  const [assignee, setAssignee] = React.useState<string>('');
-  const [fileOpen, setFileOpen] = React.useState(false);
-  const [file, setFile] = React.useState<RetrieveResult | null>(null);
-  const [fetching, startFetch] = React.useTransition();
+  const [choice, setChoice] = React.useState(emptyChoice());
+  const file = useConfigFile();
 
   const name = config.assignedIp ?? config.id;
+  const fileLabel = config.deviceLabel ?? name;
   // Revoking is irreversible but not catastrophic: the fix is issuing a new config, which takes
   // seconds. That is 'awkward', so it gets a confirm that names the deed — not type-the-name,
   // which is for damage you genuinely cannot undo.
@@ -125,9 +116,7 @@ export function ConfigRowActions({
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();
-                setFile(null);
-                setFileOpen(true);
-                startFetch(async () => setFile(await retrieveConfigAction(config.id)));
+                file.show(config.id, fileLabel);
               }}
             >
               <Download className="size-4" />
@@ -140,7 +129,7 @@ export function ConfigRowActions({
               disabled={pending}
               onSelect={(event) => {
                 event.preventDefault();
-                setAssignee('');
+                setChoice(emptyChoice());
                 setAssigning(true);
               }}
             >
@@ -201,13 +190,7 @@ export function ConfigRowActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ConfigFileDialog
-        open={fileOpen}
-        onOpenChange={setFileOpen}
-        label={config.deviceLabel ?? name}
-        result={file}
-        pending={fetching}
-      />
+      <ConfigFileDialog {...file.dialogProps} />
 
       <Dialog open={assigning} onOpenChange={setAssigning}>
         <DialogContent className="sm:max-w-md">
@@ -220,29 +203,13 @@ export function ConfigRowActions({
             </DialogDescription>
           </DialogHeader>
 
-          {users.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              There is nobody to assign this to yet. Add a user first, then come back.
-            </p>
-          ) : (
-            <div className="space-y-1.5">
-              <Label htmlFor={`assignee-${config.id}`} className="text-sm">
-                Assign to
-              </Label>
-              <Select value={assignee} onValueChange={setAssignee}>
-                <SelectTrigger id={`assignee-${config.id}`} className="h-8 w-full bg-background">
-                  <SelectValue placeholder="Choose a person" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <AssigneeField
+            id={`assignee-${config.id}`}
+            users={users}
+            value={choice}
+            onChange={setChoice}
+            allowSpare={false}
+          />
 
           <DialogFooter>
             <Button variant="ghost" size="sm" className="h-8" onClick={() => setAssigning(false)}>
@@ -251,14 +218,23 @@ export function ConfigRowActions({
             <Button
               size="sm"
               className="h-8"
-              disabled={users.length === 0}
               onClick={() => {
+                const { assignee, problem } = readChoice(choice);
                 if (!assignee) {
-                  toast.error('Choose who this config is for.');
+                  toast.error(problem);
                   return;
                 }
                 setAssigning(false);
-                run(() => assignConfigAction(config.id, assignee));
+                startTransition(async () => {
+                  const result = await assignConfigAction(config.id, assignee);
+                  if (!result.ok) {
+                    toast.error(result.error);
+                    return;
+                  }
+                  toast.success(result.message);
+                  // The person is about to be handed this file; only an admin can retrieve it.
+                  if (canRetrieve && result.liveConfigId) file.show(result.liveConfigId, fileLabel);
+                });
               }}
             >
               <UserPlus className="size-4" />

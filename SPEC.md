@@ -44,6 +44,7 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
 | Revoke a config permanently | ✅ | ✅ | ❌ |
 | Reassign a config to another user | ✅ | ❌ | ❌ |
 | Onboard / remove users (in Clerk) | ✅ | ❌ | ❌ |
+| Add a no-login person while issuing a config | ✅ | ❌ | ❌ |
 | Upload external (Proton) configs | ✅ | ❌ | ❌ |
 | Add / remove nodes | ✅ | ❌ | ❌ |
 | Download own config / QR | — | — | ✅ |
@@ -54,6 +55,13 @@ Status: **draft blueprint** (decisions locked 2026-09-20; see Open Questions for
   **cannot retrieve key material** — holding a client's private key is equivalent to holding
   the tunnel, which is a create-level power.
 - **user** = own dashboard only.
+- **no-login person** (2026-11-01) = not a role but a kind of user: someone an admin hands
+  configs to directly — a contractor, a device owner who will never open the dashboard. Added by
+  name from *Generate config* / *Assign to…*; no Clerk account, no sign-in. They hold configs,
+  appear on the Users page marked *No login*, and suspend/reactivate like anyone else (minus the
+  Clerk ban, as there is no account to ban). A live config still always maps to a named person.
+  Whenever a config goes live from the dashboard, its file (QR, text, `.conf`) opens straight
+  away for handing over; that retrieval is audited like any other.
 - A separate **superadmin** tier is optional; with 2 admins it's not needed at launch (Open Q).
 
 Roles live in Clerk `publicMetadata.roles` and are enforced server-side on every API call — never
@@ -237,11 +245,14 @@ A minimal authenticated HTTP(S) service on each node. The control plane is the o
 
 ## 8. Data model (core tables)
 
-- **users** — id, clerk_id, username, name, email, status(active/suspended), created_at.
-  A **mirror of Clerk**, not a second register of people: rows are created and updated by the
-  sync (§13), and the only column this app decides is `status`. Everything else — who exists,
-  what they are called, whether they may sign in — belongs to Clerk. `clerk_id` is nullable
-  only because rows predating the mirror still hold configs; they show as *Not in Clerk*.
+- **users** — id, kind(`clerk`|`local`), clerk_id, username, name, email,
+  status(active/suspended), created_at. A `clerk` row is a **mirror of Clerk**, not a second
+  register of people: created and updated by the sync (§13), and the only column this app decides
+  is `status`. Everything else — who exists, what they are called, whether they may sign in —
+  belongs to Clerk. A `clerk` row with no `clerk_id` predates the mirror and shows as *Not in
+  Clerk*. A `local` row is the one exception (§2, no-login person): created here by an admin with
+  just a name, owned here, never touched by the sync; names are unique case-insensitively so one
+  person cannot be split in two. Audited as `user.create_local`.
 - **staff** — id, clerk_id, role(admin|ops), created_at  *(or role held entirely in Clerk metadata)*
 - **nodes** — id, name, region, provider, endpoint(host:port), node_pubkey, cidr_pool, dns,
   agent_url, agent_token(encrypted), status, driver=`managed`

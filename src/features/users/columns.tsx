@@ -6,7 +6,8 @@ import { UserRowActions } from '@/features/users/row-actions';
 import { formatDateTime, formatNumber, relativeTime } from '@/lib/format';
 import { roleLabel } from '@/lib/person';
 
-import type { Presence } from './presence';
+import { NoLoginBadge } from './no-login-badge';
+import { accessOf, type Presence } from './presence';
 
 export type UserRow = {
   id: string;
@@ -43,6 +44,7 @@ export const userColumns = (canManage: boolean): Column<UserRow>[] => [
                 {staffRole}
               </Badge>
             ) : null}
+            {user.presence.kind === 'local' ? <NoLoginBadge /> : null}
           </div>
           {user.secondary ? (
             <div className="truncate text-xs text-muted-foreground">{user.secondary}</div>
@@ -67,6 +69,7 @@ export const userColumns = (canManage: boolean): Column<UserRow>[] => [
     key: 'seen',
     header: 'Last sign-in',
     cell: (user) => {
+      if (user.presence.kind === 'local') return <span className="text-xs text-muted-foreground">No login</span>;
       if (user.presence.kind !== 'present') return <span className="text-xs text-muted-foreground">—</span>;
       const at = user.presence.person.lastSignInAt;
       return at ? (
@@ -115,7 +118,7 @@ export const userColumns = (canManage: boolean): Column<UserRow>[] => [
               label: user.label,
               status: user.status,
               liveConfigs: user.live,
-              inClerk: user.presence.kind !== 'missing',
+              access: accessOf(user.presence),
             }}
           />
         </div>

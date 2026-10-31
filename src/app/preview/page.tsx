@@ -93,6 +93,10 @@ const users: UserRow[] = [
     id: 'u4', label: 'Priya Rao', secondary: 'priya@example.com', status: 'active', live: 0, configs: 1,
     presence: { kind: 'missing' },
   },
+  {
+    id: 'u5', label: 'Ahmed', secondary: null, status: 'active', live: 2, configs: 2,
+    presence: { kind: 'local' },
+  },
 ];
 
 const auditEntries: AuditRow[] = [
@@ -257,12 +261,13 @@ export default async function PreviewPage() {
               />
               <DataTable columns={userColumns(true)} rows={users} rowKey={(user) => user.id} />
               <p className="text-xs text-muted-foreground">
-                Clerk is the register of people; this list mirrors it. Suspending someone here bans
-                them in Clerk and switches their tunnels off.
+                People who sign in are mirrored from Clerk; people marked No login were added here and
+                get their files from an admin. Suspending someone switches their tunnels off, and bans
+                them in Clerk if they have an account.
               </p>
               <EmptyState
                 title="No one here yet"
-                hint="People come from Clerk. Create one there with a username and password and no role — a role would make them staff."
+                hint="People who sign in come from Clerk: create one there with a username and password and no role — a role would make them staff. Someone who only needs a file needs no login: add them by name from Generate config on the configs page."
                 action={<CreateInClerkButton />}
               />
             </div>

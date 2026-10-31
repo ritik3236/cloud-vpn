@@ -16,28 +16,49 @@ import {
   revokeConfig,
   unassignConfig,
 } from '@/server/configs/lifecycle';
+import { createLocalPerson } from '@/server/users';
 
 const done = (message: string): ActionResult => {
   revalidatePath('/vpn/dashboard/configs');
   return { ok: true, message };
 };
 
+/** Who a config goes to: someone already listed, or a person with no login created on the spot. */
+export type Assignee = { userId: string } | { newPersonName: string };
+
+/** Names the config that just went live, so the dialog can open its file for handing over. */
+export type IssueResult =
+  | { ok: true; message: string; liveConfigId: string | null }
+  | { ok: false; error: string };
+
+async function resolveAssignee(assignee: Assignee): Promise<string> {
+  if ('userId' in assignee) return assignee.userId;
+  const person = await createLocalPerson({ name: assignee.newPersonName });
+  revalidatePath('/vpn/dashboard/users');
+  return person.id;
+}
+
 export async function generateConfigAction(input: {
   nodeId: string;
   deviceLabel?: string;
   /** Assigning here is the same two steps as doing it later — the peer is created on assign. */
-  userId?: string;
-}): Promise<ActionResult> {
+  assignee?: Assignee;
+}): Promise<IssueResult> {
   try {
+    // The person first: a refused name must not leave a spare behind.
+    const userId = input.assignee ? await resolveAssignee(input.assignee) : undefined;
     const config = await generateConfig({
       nodeId: input.nodeId,
       deviceLabel: input.deviceLabel?.trim() || undefined,
     });
+    revalidatePath('/vpn/dashboard/configs');
 
-    if (!input.userId) return done(`Spare ${config.assignedIp} is ready to assign.`);
+    if (!userId) {
+      return { ok: true, message: `Spare ${config.assignedIp} is ready to assign.`, liveConfigId: null };
+    }
 
     try {
-      await assignConfig({ configId: config.id, userId: input.userId });
+      await assignConfig({ configId: config.id, userId });
     } catch (error) {
       // The spare exists whatever happens next, so this must not read as "nothing happened".
       return {
@@ -46,7 +67,7 @@ export async function generateConfigAction(input: {
       };
     }
 
-    return done(`${config.assignedIp} is live.`);
+    return { ok: true, message: `${config.assignedIp} is live.`, liveConfigId: config.id };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }
@@ -70,10 +91,11 @@ export async function uploadExternalConfigAction(
   }
 }
 
-export async function assignConfigAction(configId: string, userId: string): Promise<ActionResult> {
+export async function assignConfigAction(configId: string, assignee: Assignee): Promise<IssueResult> {
   try {
-    await assignConfig({ configId, userId });
-    return done('Config assigned. The tunnel is live.');
+    await assignConfig({ configId, userId: await resolveAssignee(assignee) });
+    revalidatePath('/vpn/dashboard/configs');
+    return { ok: true, message: 'Config assigned. The tunnel is live.', liveConfigId: configId };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }
