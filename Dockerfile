@@ -1,13 +1,17 @@
 # syntax=docker/dockerfile:1
 
 # ---- the node agent, built from source so the image always serves a matching binary ----
-FROM golang:1.23-alpine AS agent
+# One binary per node architecture, whatever this image runs on: the control plane's own CPU says
+# nothing about its nodes'. Pure Go with cgo off, so cross-compiling needs no emulation.
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS agent
 WORKDIR /agent
 COPY agent/go.mod agent/go.sum ./
 RUN go mod download
 COPY agent/*.go ./
-RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/cloud-vpn-agent . \
- && cd /out && sha256sum cloud-vpn-agent > cloud-vpn-agent.sha256
+RUN for arch in amd64 arm64; do \
+      CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" -o /out/cloud-vpn-agent-linux-$arch . \
+      && (cd /out && sha256sum cloud-vpn-agent-linux-$arch > cloud-vpn-agent-linux-$arch.sha256) || exit 1; \
+    done
 
 # ---- dependencies ----
 FROM node:22-alpine AS deps
@@ -53,8 +57,7 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 # with the app that advertises them.
 COPY --from=builder /app/agent/install.sh ./agent/install.sh
 COPY --from=builder /app/agent/cloud-vpn-agent.service ./agent/cloud-vpn-agent.service
-COPY --from=agent /out/cloud-vpn-agent ./agent/dist/cloud-vpn-agent
-COPY --from=agent /out/cloud-vpn-agent.sha256 ./agent/dist/cloud-vpn-agent.sha256
+COPY --from=agent /out/ ./agent/dist/
 COPY docker-entrypoint.sh /usr/local/bin/
 
 EXPOSE 3000

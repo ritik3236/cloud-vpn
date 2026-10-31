@@ -69,8 +69,13 @@ fi
 
 echo "==> agent"
 id cvpn-agent >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin cvpn-agent
-curl -fsSL "${SERVER}/download/cloud-vpn-agent" -o /tmp/cloud-vpn-agent.bin
-curl -fsSL "${SERVER}/download/cloud-vpn-agent.sha256" -o /tmp/cloud-vpn-agent.sha256
+case "$(uname -m)" in
+  x86_64 | amd64)  ARCH=amd64 ;;
+  aarch64 | arm64) ARCH=arm64 ;;
+  *) echo "unsupported CPU architecture: $(uname -m) (the agent is built for amd64 and arm64)" >&2; exit 1 ;;
+esac
+curl -fsSL "${SERVER}/download/cloud-vpn-agent-linux-${ARCH}" -o /tmp/cloud-vpn-agent.bin
+curl -fsSL "${SERVER}/download/cloud-vpn-agent-linux-${ARCH}.sha256" -o /tmp/cloud-vpn-agent.sha256
 EXPECTED="$(cut -d' ' -f1 < /tmp/cloud-vpn-agent.sha256)"
 ACTUAL="$(sha256sum /tmp/cloud-vpn-agent.bin | cut -d' ' -f1)"
 if [ "$EXPECTED" != "$ACTUAL" ]; then
