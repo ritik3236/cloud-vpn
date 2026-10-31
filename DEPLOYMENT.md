@@ -1,11 +1,42 @@
 # Deploying the control plane
 
+> **Since 2026-10-31 the control plane runs in `us-east-1` on a `t4g.small` (arm64) at `3.81.204.180`.**
+> The original Singapore box was deleted; nothing was lost because the state is in Neon and Clerk.
+> Production data is on the Neon branch endpoint **`ep-dry-cloud-az0dyuss`** (not `ep-wandering-dawn`).
+> The published GHCR image is amd64-only, so the arm64 box takes an image **built on the owner's Mac**
+> and shipped over SSH; there is no registry in the loop. The box-side files live in `deploy/`.
+
+## Current path (arm64 box, no registry)
+
+```bash
+# 1. secrets live in Parameter Store (us-east-1, /cloud-vpn/*); the instance role may read them
+# 2. build for arm64 on the Mac, the Clerk publishable key comes from Parameter Store
+pk=$(aws ssm get-parameter --region us-east-1 --name /cloud-vpn/NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY --with-decryption --query Parameter.Value --output text)
+docker buildx build --platform linux/arm64 --provenance=false --sbom=false --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$pk" -t cloud-vpn:local --load .
+# 3. ship it and the box files, then (re)start: box-deploy.sh writes .env from Parameter Store
+docker save cloud-vpn:local | gzip -1 | ssh ubuntu@3.81.204.180 'gunzip | docker load'
+scp deploy/box-compose.yml ubuntu@3.81.204.180:/opt/cloud-vpn/docker-compose.yml
+scp deploy/box-deploy.sh Caddyfile ubuntu@3.81.204.180:/opt/cloud-vpn/
+ssh ubuntu@3.81.204.180 /opt/cloud-vpn/box-deploy.sh
+```
+
+`deploy/box-compose.yml` differs from the repo's `docker-compose.yml` in two ways that matter: it runs the
+locally loaded `cloud-vpn:local` image, and it gives the app `NODE_OPTIONS=--dns-result-order=ipv4first`
+**and** `sysctls: net.ipv6.conf.all.disable_ipv6=1`. The box has no IPv6 route while Neon resolves to an
+IPv6 address first; without both settings Prisma reports `P1001 Can't reach database server` (its engine
+does not honour the Node option alone). The same P1001 also hides a wrong password, so when it appears,
+test the connection string with a plain `pg` client before blaming the network.
+
+The sections below describe the original x86 path (GHCR image, Singapore); they still apply to any
+amd64 host.
+
+
 One host, Docker Compose, Caddy in front for TLS. The image also builds and serves the node
 agent, so a node enrolled from this control plane always gets a matching binary.
 
 ## Prerequisites
 
-- **DNS**: `tech.bizdaddy.ae` → the control plane's Elastic IP (`52.77.111.2`).
+- **DNS**: `tech.bizdaddy.ae` → the control plane's Elastic IP (`3.81.204.180`).
 - **Security group**: inbound `80` and `443` from anywhere (Caddy needs 80 for the ACME
   challenge), `22` from your IP only.
 - **Docker + compose plugin** on the host.
@@ -13,7 +44,7 @@ agent, so a node enrolled from this control plane always gets a matching binary.
 ## First deploy
 
 ```bash
-ssh ubuntu@52.77.111.2
+ssh ubuntu@3.81.204.180
 sudo install -d -m 0750 -o ubuntu -g ubuntu /opt/cloud-vpn
 ```
 
@@ -73,7 +104,7 @@ docker compose pull ghcr.io/ritik3236/cloud-vpn:<sha> && docker compose up -d
 ## After the first deploy
 
 - **Lock each node's agent port to this host — over IPv6 too.** On every node, allow `51821/tcp`
-  only from `52.77.111.2` (plus loopback and the node's own IP, which the installer's readiness
+  only from `3.81.204.180` (plus loopback and the node's own IP, which the installer's readiness
   check uses), and drop it on IPv6. The agent binds dual-stack, so an IPv4-only rule leaves the
   port open to the whole IPv6 internet on any node that has an address there. TLS and the bearer
   token already protect it; this removes it from the public internet entirely. Persist only the
@@ -91,7 +122,7 @@ key. That key is inlined into the bundle at build time, so this is a rebuild, no
 
 Order matters — do it in this sequence to keep the dark window short:
 
-1. **DNS**: `A tech.bizdaddy.ae → 52.77.111.2`. Confirm it resolves before going further.
+1. **DNS**: `A tech.bizdaddy.ae → 3.81.204.180`. Confirm it resolves before going further.
 2. **Clerk**: Dashboard → Domains → change the production domain, then add the CNAME records it
    prints (under `bizdaddy.ae`). Propagation can take hours; Clerk warns up to 48.
 3. **New key**: copy the regenerated `pk_live_…` into the GitHub repository variable

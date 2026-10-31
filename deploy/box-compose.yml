@@ -1,0 +1,38 @@
+# Control plane on the box: the image is built on the owner's Mac for arm64 and loaded here over SSH
+# (docker save | docker load), so there is no registry and no build on the box.
+services:
+  app:
+    image: cloud-vpn:local
+    restart: unless-stopped
+    env_file: .env
+    # the box has no IPv6 route; Neon resolves to an IPv6 address first, so make Node prefer IPv4
+    environment:
+      NODE_OPTIONS: --dns-result-order=ipv4first
+    # Prisma's engine resolves on its own, so also take IPv6 away from the container: a v6 attempt then fails at once and falls back to v4
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/install.sh", "-o", "/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:
