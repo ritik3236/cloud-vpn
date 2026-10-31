@@ -5,7 +5,7 @@ import { PoolExhaustedError } from '@/server/ipam';
 import { InvalidNodeInput, NodeInUseError, NodePreflightError } from '@/server/nodes';
 import { InvalidExternalConfig } from '@/server/external';
 import { ConfigUnavailableError, NotAMemberError, SuspendedError } from '@/server/me';
-import { SelfSuspendError } from '@/server/users';
+import { InvalidPersonInput, SelfSuspendError } from '@/server/users';
 
 /**
  * Turns a thrown error into a sentence a person can act on. Anything unrecognised becomes a
@@ -19,6 +19,7 @@ export function errorMessage(error: unknown): string {
   if (error instanceof InvalidNodeInput) return error.message;
   if (error instanceof InvalidExternalConfig) return error.message;
   if (error instanceof SelfSuspendError) return error.message;
+  if (error instanceof InvalidPersonInput) return error.message;
   if (error instanceof NodeInUseError) return error.message;
   if (error instanceof ConfigStateError) return error.message;
   if (error instanceof PoolExhaustedError) {

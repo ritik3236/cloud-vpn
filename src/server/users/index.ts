@@ -143,10 +143,11 @@ export async function suspendUser(input: { userId: string }): Promise<SuspendRes
   };
 }
 
-export class DuplicatePersonError extends Error {
-  constructor(name: string) {
-    super(`${name} already exists — choose them from the list instead.`);
-    this.name = 'DuplicatePersonError';
+/** A no-login person the admin described in a way that cannot be accepted; the message says why. */
+export class InvalidPersonInput extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidPersonInput';
   }
 }
 
@@ -160,11 +161,13 @@ const NAME_MAX = 80;
 export async function createLocalPerson(input: { name: string }) {
   const staff = await actingStaff('admin');
   const name = input.name.trim();
-  if (!name) throw new Error('Give the new person a name.');
-  if (name.length > NAME_MAX) throw new Error(`Keep the name under ${NAME_MAX} characters.`);
+  if (!name) throw new InvalidPersonInput('Give the new person a name.');
+  if (name.length > NAME_MAX) throw new InvalidPersonInput(`Keep the name under ${NAME_MAX} characters.`);
 
   const existing = await db.user.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
-  if (existing) throw new DuplicatePersonError(personLabel(existing));
+  if (existing) {
+    throw new InvalidPersonInput(`${personLabel(existing)} already exists — choose them from the list instead.`);
+  }
 
   const person = await db.user.create({ data: { name, kind: 'local' } });
   await recordAudit({

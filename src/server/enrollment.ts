@@ -1,12 +1,13 @@
 import 'server-only';
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { isIPv4 } from 'node:net';
 
 import { AUDIT_ACTIONS, recordAudit } from '@/server/audit';
 import { encrypt } from '@/server/crypto';
 import { db } from '@/server/db';
 import { poolContains, poolRange } from '@/server/ipam';
-import { probeNodeAgent } from '@/server/nodes';
+import { InvalidNodeInput, probeNodeAgent } from '@/server/nodes';
 import { actingStaff } from '@/server/staff';
 
 const TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -24,6 +25,30 @@ export class EnrollmentError extends Error {
 
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
 
+const LABEL_MAX = 60;
+
+/**
+ * Checked here, not an hour later when the node calls back — and field by field, so the admin
+ * reads which box is wrong instead of a parser's complaint.
+ */
+function checkNodeDetails(input: { name: string; region: string; provider: string; cidrPool: string; dns: string }) {
+  for (const [field, value] of [['Name', input.name], ['Region', input.region], ['Provider', input.provider]] as const) {
+    if (!value.trim()) throw new InvalidNodeInput(field, 'required.');
+    if (value.trim().length > LABEL_MAX) throw new InvalidNodeInput(field, `keep it under ${LABEL_MAX} characters.`);
+  }
+  try {
+    const [base] = input.cidrPool.trim().split('/');
+    if (!isIPv4(base ?? '')) throw new Error('not an IPv4 network');
+    poolRange(input.cidrPool.trim());
+  } catch {
+    throw new InvalidNodeInput('Address pool', 'must look like 10.8.0.0/24 (a /8 to /30 network).');
+  }
+  const servers = input.dns.split(',').map((server) => server.trim());
+  if (servers.some((server) => !isIPv4(server))) {
+    throw new InvalidNodeInput('DNS', 'must be IPv4 addresses, e.g. 1.1.1.1 or 1.1.1.1, 9.9.9.9.');
+  }
+}
+
 /**
  * Mints a single-use enrollment secret. The admin supplies the human details now; the node
  * supplies its key, certificate and endpoint when it enrolls — so no secret is ever read off
@@ -37,7 +62,7 @@ export async function createEnrollmentToken(input: {
   dns: string;
 }) {
   const staff = await actingStaff('admin');
-  poolRange(input.cidrPool); // fail here, not an hour later when the node calls back
+  checkNodeDetails(input);
 
   const token = PREFIX + randomBytes(24).toString('base64url');
   const record = await db.enrollmentToken.create({

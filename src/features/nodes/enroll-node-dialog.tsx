@@ -2,6 +2,7 @@
 
 import { Plus, Terminal } from 'lucide-react';
 import * as React from 'react';
+import { toast } from 'sonner';
 
 import { Copyable } from '@/design-system';
 import { Button } from '@/design-system/ui/button';
@@ -19,17 +20,44 @@ import { Label } from '@/design-system/ui/label';
 
 import { createEnrollmentTokenAction } from './actions';
 
-function Field({ name, label, example, hint }: { name: string; label: string; example: string; hint?: string }) {
+/** `defaultValue` is a real value the form submits; `example` is only a grey hint and submits nothing. */
+function Field({
+  name,
+  label,
+  example,
+  defaultValue,
+  hint,
+}: {
+  name: string;
+  label: string;
+  example?: string;
+  defaultValue?: string;
+  hint?: string;
+}) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={name} className="text-sm">
         {label}
       </Label>
-      <Input id={name} name={name} placeholder={example} className="h-8 bg-background" />
+      <Input
+        id={name}
+        name={name}
+        placeholder={example}
+        defaultValue={defaultValue}
+        className="h-8 bg-background"
+      />
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
+
+const REQUIRED = [
+  ['name', 'Name'],
+  ['region', 'Region'],
+  ['provider', 'Provider'],
+  ['cidrPool', 'Address pool'],
+  ['dns', 'DNS'],
+] as const;
 
 export function EnrollNodeDialog({ serverUrl }: { serverUrl: string }) {
   const [open, setOpen] = React.useState(false);
@@ -40,6 +68,12 @@ export function EnrollNodeDialog({ serverUrl }: { serverUrl: string }) {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const missing = REQUIRED.find(([key]) => !String(formData.get(key) ?? '').trim());
+    if (missing) {
+      toast.error(`${missing[1]} is required.`);
+      event.currentTarget.querySelector<HTMLInputElement>(`#${missing[0]}`)?.focus();
+      return;
+    }
     startTransition(async () => {
       const result = await createEnrollmentTokenAction(formData);
       if (result.ok) {
@@ -116,19 +150,19 @@ export function EnrollNodeDialog({ serverUrl }: { serverUrl: string }) {
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <Field name="name" label="Name" example="VPN-2" />
+              <Field name="name" label="Name" example="e.g. London" />
               <div className="grid grid-cols-2 gap-3">
-                <Field name="region" label="Region" example="Stockholm" />
-                <Field name="provider" label="Provider" example="njal.la" />
+                <Field name="region" label="Region" example="e.g. London" />
+                <Field name="provider" label="Provider" example="e.g. AWS" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field
                   name="cidrPool"
                   label="Address pool"
-                  example="10.8.1.0/24"
-                  hint="A /24 holds 253 clients."
+                  defaultValue="10.8.0.0/24"
+                  hint="Matches the installer's tunnel (10.8.0.1). Every node can use it; a /24 holds 253 clients."
                 />
-                <Field name="dns" label="DNS" example="1.1.1.1" hint="Given to clients." />
+                <Field name="dns" label="DNS" defaultValue="1.1.1.1" hint="Given to clients." />
               </div>
 
               <DialogFooter className="items-center gap-3 sm:justify-between">
