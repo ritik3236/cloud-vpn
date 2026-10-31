@@ -51,3 +51,6 @@ coverage/
 .vscode/*
 !.vscode/extensions.json
 .DS_Store
+
+# project secrets, never committed
+_private/

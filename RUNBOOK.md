@@ -1,7 +1,7 @@
 # Runbook: rebuilding the Cloud VPN control plane from nothing
 
-Everything secret lives in two places that must agree: the owner's vault
-(`~/dev-notes/_private/cloud-vpn-credentials.md`) and AWS Parameter Store `us-east-1` `/cloud-vpn/*`.
+Everything secret lives in two places that must agree: this repo's git-ignored `_private/credentials.md`
+(current values, rebuild facts, node access) and AWS Parameter Store `us-east-1` `/cloud-vpn/*`.
 This file holds no secrets. Written after the 2026-10-31 rebuild (the original server was deleted;
 nothing was lost because all state is in Neon and Clerk).
 
@@ -46,8 +46,8 @@ aws ec2 allocate-address --domain vpc && aws ec2 associate-address --instance-id
 
 Seven parameters under `/cloud-vpn/`: `DATABASE_URL` (pooled), `DIRECT_URL` (unpooled), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
 `CLERK_SECRET_KEY`, `APP_ENCRYPTION_KEY`, `APP_DOMAIN` (String, `tech.bizdaddy.ae`), optionally `GHCR_PAT`.
-Load them with hidden input, never by pasting into a chat: the vault documents the helper scripts
-(`cloud-vpn-set-neon.sh`, `cloud-vpn-set-clerk.sh`; the Clerk one refuses a publishable key that does not decode to
+Load them with hidden input, never by pasting into a chat, with `deploy/set-neon.sh` and `deploy/set-clerk.sh`
+( the Clerk one refuses a publishable key that does not decode to
 `clerk.tech.bizdaddy.ae`). Checks that bit us:
 
 - A Clerk publishable key encodes its frontend domain (`base64 -d` of the part after `pk_live_`). A key from a retired
@@ -87,5 +87,5 @@ A node that answers nothing on any port from two different networks is gone, not
 ## 6. After a rebuild
 
 - Rotate anything that was ever pasted into a chat or a ticket (Neon role password, Clerk secret key).
-- Update the vault and Parameter Store together.
+- Update `_private/credentials.md` and Parameter Store together.
 - Delete the old box's key pair file if one is left over.
