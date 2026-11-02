@@ -84,6 +84,10 @@ IPv6. When the control-plane address changes, run on each node as root:
 `timeout 6 bash -c '</dev/tcp/<node-ip>/51821' && echo open`. New nodes enroll with `/install.sh` served by the app.
 A node that answers nothing on any port from two different networks is gone, not firewalled: remove it in the dashboard.
 
+London and Ireland report to logmania (`../noel/logmania/agents/vpn-*.conf`, SSM install). `deploy/node-probe.sh` is copied by hand to
+`/usr/local/bin/vpn-probe.sh` on each and run every minute as `CHECK_tunnel`: interface, port, forwarding, NAT, agent, public IP. A failure alerts on Telegram.
+It does not prove a client got through.
+
 ## 6. After a rebuild
 
 - Rotate anything that was ever pasted into a chat or a ticket (Neon role password, Clerk secret key).
